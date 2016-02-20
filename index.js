@@ -1,4 +1,4 @@
-// attachment
+'use strict';
 
 var fs     = require('fs');
 var spawn  = require('child_process').spawn;
@@ -12,24 +12,32 @@ var tmp;
 var archives_disabled = false;
 
 exports.register = function () {
+    var plugin = this;
+
     try {
         tmp = require('tmp');
         tmp.setGracefulCleanup();
     }
     catch (e) {
         archives_disabled = true;
-        this.logwarn('This module requires the \'tmp\' module to extract ' +
-            'filenames from archive files');
+        plugin.logwarn("The 'tmp' module is required, install with npm");
         return;
     }
 
-    this.load_attachment_ini();
-    this.load_n_compile_re('file',    'attachment.filename.regex');
-    this.load_n_compile_re('ctype',   'attachment.ctype.regex');
-    this.load_n_compile_re('archive', 'attachment.archive.filename.regex');
+    plugin.re = {
+        file: [],
+        ctype: [],
+        archive: [],
+    };
 
-    this.register_hook('data_post', 'wait_for_attachment_hooks');
-    this.register_hook('data_post', 'check_attachments');
+    plugin.load_attachment_ini();
+
+    plugin.compile_re('file',    plugin.cfg.filename_regex);
+    plugin.compile_re('ctype',   plugin.cfg.ctype_regex);
+    plugin.compile_re('archive', plugin.cfg.archive_filename_regex);
+
+    plugin.register_hook('data_post', 'wait_for_attachment_hooks');
+    plugin.register_hook('data_post', 'check_attachments');
 };
 
 exports.load_attachment_ini = function () {
@@ -41,66 +49,44 @@ exports.load_attachment_ini = function () {
 
     plugin.cfg.timeout = (plugin.cfg.main.timeout || 30) * 1000;
 
-    // repair a mismatch between legacy docs and code
-    var extns = (plugin.cfg.archive && plugin.cfg.archive.extensions) ?
-                plugin.cfg.archive.extensions :      // new
-                plugin.cfg.main.archive_extensions ? // old code
-                plugin.cfg.main.archive_extensions :
-                plugin.cfg.main.archive_extns ?      // old docs
-                plugin.cfg.main.archive_extns :
-                '';
+    if (!plugin.cfg.archive) {
+        plugin.cfg.archive = {};
+    }
 
-    var maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
-                plugin.cfg.archive.max_depth :   // new
-                plugin.cfg.main.archive_max_depth ?   // old
-                plugin.cfg.main.archive_max_depth :
-                5;                                    // default
+    if (!plugin.cfg.archive.max_depth) {
+        plugin.cfg.archive.max_depth = plugin.cfg.main.archive_max_depth || 5;
+    }
 
-    plugin.cfg.archive = {
-        max_depth: maxd,
-        exts : plugin.options_to_object(extns) ||
-               plugin.options_to_object('zip tar tgz taz z gz rar 7z'),
-    };
+    if (!plugin.cfg.archive.extensions) {
+        // shim for a mismatch between legacy docs and code
+        plugin.cfg.archive.extensions =
+            plugin.cfg.main.archive_extensions ? // old code
+            plugin.cfg.main.archive_extensions :
+            plugin.cfg.main.archive_extns ?      // old docs
+            plugin.cfg.main.archive_extns :
+            'zip tar tgz taz z gz rar 7z';
+    }
 
-    plugin.load_dissallowed_extns();
+    plugin.cfg.archive.exts = plugin.options_to_object(plugin.cfg.archive.extensions);
 };
 
-exports.load_dissallowed_extns = function () {
-    var plugin = this;
-
-    if (!plugin.cfg.main.disallowed_extensions) return;
-
-    if (!plugin.re) plugin.re = {};
-    plugin.re.bad_extn = new RegExp(
-            '\\.(?:' +
-                (plugin.cfg.main.disallowed_extensions
-                .replace(/\s+/,' ')
-                .split(/[;, ]/)
-                .join('|')) +
-            ')$', 'i');
-};
-
-exports.load_n_compile_re = function (name, file) {
+exports.compile_re = function (name, re_list) {
     var plugin = this;
     var valid_re = [];
 
-    var try_re = plugin.config.get(file, 'list', function () {
-        plugin.load_n_compile_re(name, file);
-    });
-
-    for (var r=0; r < try_re.length; r++) {
+    Object.keys(re_list).forEach(function (key) {
+        // if no = sign on config line, the val is undef & the key is the RE
+        var re = re_list[key] === undefined key : re_list[key];
         try {
-            var reg = new RegExp(try_re[r], 'i');
+            var reg = new RegExp(re, 'i');
         }
         catch (e) {
-            this.logerror('skipping invalid regexp: /' + try_re[r] +
-                    '/ (' + e + ')');
+            plugin.logerror('invalid regexp: /' + re + '/ (' + e + ')');
             return;
         }
         valid_re.push(reg);
-    }
+    });
 
-    if (!plugin.re) plugin.re = {};
     plugin.re[name] = valid_re;
 };
 
@@ -367,17 +353,20 @@ exports.hook_data = function (next, connection) {
 
 exports.disallowed_extensions = function (txn) {
     var plugin = this;
-    if (!plugin.re.bad_extn) return false;
+    if (!plugin.cfg.bad_filename_extensions) return false;
 
     var bad = false;
     [ txn.notes.attachment_files, txn.notes.attachment_archive_files ]
     .forEach(function (items) {
         if (bad) return;
-        if (!items || !Array.isArray(items)) return;
+        if (!items) return;
+        if (!Array.isArray(items)) return;
         for (var i=0; i < items.length; i++) {
-            if (!plugin.re.bad_extn.test(items[i])) continue;
-            bad = items[i].split('.').slice(0).pop();
-            break;
+            var extn = items[i].split('.').slice(0).pop();
+            if (plugin.cfg.bad_filename_extensions.hasOwnProperty(extn)) {
+                bad = extn;
+                break;
+            }
         }
     });
 
