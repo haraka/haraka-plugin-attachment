@@ -11,7 +11,7 @@
   },
   "main": "index.js",
   "engines": {
-    "node": ">= 4.3"
+    "node": ">= 0.10.42"
   },
   "dependencies": {
     "tmp": "0.0.31"
@@ -58,9 +58,10 @@
     "eslint": ">=2.0.0",
     "grunt": "*",
     "grunt-contrib-clean": "*",
-    "grunt-contrib-jshint": "*",
+    "grunt-eslint": "*",
     "grunt-version-check": "*",
-    "grunt-eslint": "*"
+    "haraka-config": "*",
+    "haraka-test-fixtures": "*"
   },
   "bugs": {
     "mail": "helpme@gmail.com",
