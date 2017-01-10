@@ -3,7 +3,7 @@
   "name": "haraka-plugin-attachment",
   "license": "MIT",
   "description": "A message attachment scanning plugin for Haraka",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "homepage": "http://haraka.github.io",
   "repository": {
     "type": "git",
@@ -11,56 +11,23 @@
   },
   "main": "index.js",
   "engines": {
-    "node": ">= 4.3"
+    "node": ">= 4"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha",
+    "lint": "./node_modules/.bin/eslint *.js test/*.js",
+    "cover": "NODE_ENV=cov ./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha"
   },
   "dependencies": {
-    "tmp": "0.0.31"
-  },
-  "eslintConfig": {
-    "env": {
-      "node": true
-    },
-    "rules": {
-      "camelcase": [
-        0,
-        {
-          "properties": "never"
-        }
-      ],
-      "dot-notation": 2,
-      "indent": [
-        2,
-        4,
-        {
-          "SwitchCase": 1
-        }
-      ],
-      "one-var": [
-        2,
-        "never"
-      ],
-      "no-trailing-spaces": [
-        2,
-        {
-          "skipBlankLines": false
-        }
-      ],
-      "keyword-spacing": [
-        2,
-        {
-          "overrides": {}
-        }
-      ]
-    }
+    "tmp": "0.0.31",
+    "haraka-constants": "^1.0.1"
   },
   "optionalDependencies": {},
   "devDependencies": {
-    "eslint": ">=2.0.0",
-    "grunt": "*",
-    "grunt-contrib-clean": "*",
-    "grunt-contrib-jshint": "*",
-    "grunt-version-check": "*",
-    "grunt-eslint": "*"
+    "eslint": ">=3",
+    "haraka-config": "*",
+    "haraka-test-fixtures": "*",
+    "mocha": "^3.2.0"
   },
   "bugs": {
     "mail": "helpme@gmail.com",
