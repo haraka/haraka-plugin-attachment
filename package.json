@@ -26,7 +26,8 @@
   "devDependencies": {
     "eslint": ">=3",
     "haraka-config": "*",
-    "haraka-test-fixtures": "*"
+    "haraka-test-fixtures": "*",
+    "mocha": "^3.2.0"
   },
   "bugs": {
     "mail": "helpme@gmail.com",
