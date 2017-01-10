@@ -8,6 +8,7 @@ var crypto = require('crypto');
 
 // npm dependencies
 var tmp    = require('tmp');
+var constants = require('haraka-constants');
 
 var archives_disabled = false;
 
@@ -128,12 +129,12 @@ exports.unarchive_recursive = function(connection, f, archive_file_name, cb) {
     var done_cb = false;
     var timer;
 
-    function do_cb(err, files) {
+    function do_cb(err, files2) {
         if (timer) clearTimeout(timer);
         if (done_cb) return;
         done_cb = true;
         deleteTempFiles();
-        return cb(err, files);
+        return cb(err, files2);
     }
 
     function deleteTempFiles() {
@@ -172,9 +173,9 @@ exports.unarchive_recursive = function(connection, f, archive_file_name, cb) {
                 }
                 return do_cb(err);
             }
-            var f = stdout.split(/\r?\n/);
-            for (var i=0; i<f.length; i++) {
-                var file = f[i];
+            var g = stdout.split(/\r?\n/);
+            for (var i=0; i<g.length; i++) {
+                var file = g[i];
                 // Skip any blank lines
                 if (!file) continue;
                 connection.logdebug(plugin, 'file: ' + file + ' depth=' + depth);
@@ -186,25 +187,25 @@ exports.unarchive_recursive = function(connection, f, archive_file_name, cb) {
                     connection.logdebug(plugin, 'need to extract file: ' + file);
                     count++;
                     depth++;
-                    (function (file, depth) {
-                        tmp.file(function (err, tmpfile, fd) {
+                    (function (file2, depth2) {
+                        tmp.file(function (err2, tmpfile, fd) {
                             count--;
-                            if (err) return do_cb(err.message);
+                            if (err2) return do_cb(err2.message);
                             connection.logdebug(plugin, 'created tmp file: ' + tmpfile + '(fd=' + fd + ') for file ' + (prefix ? prefix + '/' : '') + file);
                             // Extract this file from the archive
-                            var cmd = 'LANG=C bsdtar -Oxf ' + in_file + ' --include="' + file + '" > ' + tmpfile;
+                            var cmd2 = 'LANG=C bsdtar -Oxf ' + in_file + ' --include="' + file2 + '" > ' + tmpfile;
                             tmpfiles.push([fd, tmpfile]);
-                            connection.logdebug(plugin, 'running command: ' + cmd);
+                            connection.logdebug(plugin, 'running command: ' + cmd2);
                             count++;
-                            exec(cmd, { timeout: plugin.cfg.timeout }, function (error, stdout, stderr) {
+                            exec(cmd2, { timeout: plugin.cfg.timeout }, function (err3, stdout2, stderr3) {
                                 count--;
-                                if (error) {
-                                    connection.logdebug(plugin, 'error: return code ' + error.code + ': ' + stderr.toString('utf-8'));
+                                if (err3) {
+                                    connection.logdebug(plugin, 'error: return code ' + err3.code + ': ' + stderr.toString('utf-8'));
                                     return do_cb(new Error(stderr.toString('utf-8').replace(/\r?\n/g,' ')));
                                 }
                                 else {
                                     // Recurse
-                                    return listFiles(tmpfile, (prefix ? prefix + '/' : '') + file, depth);
+                                    return listFiles(tmpfile, (prefix ? prefix + '/' : '') + file2, depth2);
                                 }
                             });
                         });
@@ -244,7 +245,7 @@ exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) 
     stream.once('end', function () {
         digest = md5.digest('hex');
         var ca = ctype.match(/^(.*)?;\s+name="(.*)?"/);
-        txn.results.push(plugin, { attach: {
+        connection.transaction.results.push(plugin, { attach: {
             file: filename,
             ctype: (ca && ca[2] === filename) ? ca[1] : ctype,
             md5: digest,
@@ -279,6 +280,7 @@ exports.content_type = function (connection, ctype) {
 };
 
 exports.has_archive_extension = function (file_ext) {
+    var plugin = this;
     // check with and without the dot prefixed
     if (plugin.cfg.archive.exts[file_ext]) return true;
     if (plugin.cfg.archive.exts[file_ext.substring(1)]) return true;
@@ -315,7 +317,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
 
     if (archives_disabled) return;
 
-    if (!has_archive_extension(file_ext)) return;
+    if (!plugin.has_archive_extension(file_ext)) return;
 
     connection.logdebug(plugin, 'found ' + file_ext + ' on archive list');
     txn.notes.attachment.todo_count++;
@@ -333,7 +335,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
             });
         }
         function save_archive_error(deny_msg, log_msg) {
-            txn.notes.attachment.result = [ DENYSOFT, deny_msg ];
+            txn.notes.attachment.result = [ constants.DENYSOFT, deny_msg ];
             txn.notes.attachment.todo_count--;
             connection.logerror(plugin, log_msg);
             cleanup();
@@ -367,13 +369,13 @@ exports.expand_tmpfile = function (connection, fn, filename, cleanup, done) {
         if (err) {
             connection.logerror(plugin, err.message);
             if (err.message === 'maximum archive depth exceeded') {
-                txn.notes.attachment.result = [ DENY, 'Message contains nested archives exceeding the maximum depth' ];
+                txn.notes.attachment.result = [ constants.DENY, 'Message contains nested archives exceeding the maximum depth' ];
             }
             else if (/Encrypted file is unsupported/i.test(err.message)) {
-                txn.notes.attachment.result = [ DENY, 'Message contains encrypted archive' ];
+                txn.notes.attachment.result = [ constants.DENY, 'Message contains encrypted archive' ];
             }
             else {
-                txn.notes.attachment.result = [ DENYSOFT, 'Error unpacking archive' ];
+                txn.notes.attachment.result = [ constants.DENYSOFT, 'Error unpacking archive' ];
             }
         }
         else {
@@ -460,28 +462,28 @@ exports.check_attachments = function (next, connection) {
 
     var bad_extn = this.disallowed_extensions(txn);
     if (bad_extn) {
-        return next(DENY, 'Message contains disallowed file extension (' +
+        return next(constants.DENY, 'Message contains disallowed file extension (' +
                     bad_extn + ')');
     }
 
     var ctypes_result = this.check_items_against_regexps(ctypes, plugin.re.ctype);
     if (ctypes_result) {
         connection.loginfo(this, 'match ctype="' + ctypes_result[0] + '" regexp=/' + ctypes_result[1] + '/');
-        return next(DENY, 'Message contains unacceptable content type (' + ctypes_result[0] + ')');
+        return next(constants.DENY, 'Message contains unacceptable content type (' + ctypes_result[0] + ')');
     }
 
     var files = txn.notes.attachment.files;
     var files_result = this.check_items_against_regexps(files, plugin.re.file);
     if (files_result) {
         connection.loginfo(this, 'match file="' + files_result[0] + '" regexp=/' + files_result[1] + '/');
-        return next(DENY, 'Message contains unacceptable attachment (' + files_result[0] + ')');
+        return next(constants.DENY, 'Message contains unacceptable attachment (' + files_result[0] + ')');
     }
 
     var archive_files = txn.notes.attachment.archive_files;
     var archives_result = this.check_items_against_regexps(archive_files, plugin.re.archive);
     if (archives_result) {
         connection.loginfo(this, 'match file="' + archives_result[0] + '" regexp=/' + archives_result[1] + '/');
-        return next(DENY, 'Message contains unacceptable attachment (' + archives_result[0] + ')');
+        return next(constants.DENY, 'Message contains unacceptable attachment (' + archives_result[0] + ')');
     }
 
     return next();
