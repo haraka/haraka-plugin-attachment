@@ -1,6 +1,8 @@
 attachment
 ==========
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/haraka/haraka-plugin-attachment.svg)](https://greenkeeper.io/)
+
 This plugin allows you to reject messages based on Content-Type within 
 the message or any MIME parts or on the filename of any attachments.
 
