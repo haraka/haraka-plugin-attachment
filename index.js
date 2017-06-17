@@ -114,7 +114,7 @@ exports.options_to_object = function (options) {
     return false;
 };
 
-exports.unarchive_recursive = function(connection, f, archive_file_name, cb) {
+exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
     var plugin = this;
 
     if (archives_disabled) {
@@ -129,7 +129,7 @@ exports.unarchive_recursive = function(connection, f, archive_file_name, cb) {
     var done_cb = false;
     var timer;
 
-    function do_cb(err, files2) {
+    function do_cb (err, files2) {
         if (timer) clearTimeout(timer);
         if (done_cb) return;
         done_cb = true;
@@ -137,18 +137,18 @@ exports.unarchive_recursive = function(connection, f, archive_file_name, cb) {
         return cb(err, files2);
     }
 
-    function deleteTempFiles() {
+    function deleteTempFiles () {
         tmpfiles.forEach(function (t) {
             fs.close(t[0], function () {
                 connection.logdebug(plugin, 'closed fd: ' + t[0]);
-                fs.unlink(t[1], function() {
+                fs.unlink(t[1], function () {
                     connection.logdebug(plugin, 'deleted tempfile: ' + t[1]);
                 });
             });
         });
     }
 
-    function listFiles(in_file, prefix, depth) {
+    function listFiles (in_file, prefix, depth) {
         if (!depth) depth = 0;
         if (depth >= plugin.cfg.archive.max_depth || depth_exceeded) {
             if (count === 0) {
@@ -326,15 +326,15 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
     stream.pause();
 
     tmp.file(function (err, fn, fd) {
-        function cleanup() {
-            fs.close(fd, function() {
+        function cleanup () {
+            fs.close(fd, function () {
                 connection.logdebug(plugin, 'closed fd: ' + fd);
                 fs.unlink(fn, function () {
                     connection.logdebug(plugin, 'unlinked: ' + fn);
                 });
             });
         }
-        function save_archive_error(deny_msg, log_msg) {
+        function save_archive_error (deny_msg, log_msg) {
             txn.notes.attachment.result = [ constants.DENYSOFT, deny_msg ];
             txn.notes.attachment.todo_count--;
             connection.logerror(plugin, log_msg);
@@ -353,7 +353,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
         ws.on('error', function (error) {
             save_archive_error(error.message, 'stream error: ' + error.message);
         });
-        ws.on('close', function() {
+        ws.on('close', function () {
             connection.logdebug(plugin, 'end of stream');
             plugin.expand_tmpfile(connection, fn, filename, cleanup, next);
         });
