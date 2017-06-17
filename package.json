@@ -3,7 +3,7 @@
   "name": "haraka-plugin-attachment",
   "license": "MIT",
   "description": "A message attachment scanning plugin for Haraka",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "homepage": "http://haraka.github.io",
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "tmp": "0.0.31",
-    "haraka-constants": "^1.0.1"
+    "haraka-constants": "*"
   },
   "optionalDependencies": {},
   "devDependencies": {
@@ -29,7 +29,7 @@
     "eslint-plugin-haraka": "*",
     "haraka-config": "*",
     "haraka-test-fixtures": "*",
-    "mocha": "^3.2.0"
+    "mocha": "*"
   },
   "bugs": {
     "mail": "helpme@gmail.com",

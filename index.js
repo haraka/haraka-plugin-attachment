@@ -38,18 +38,18 @@ exports.load_attachment_ini = function () {
 
     // repair a mismatch between legacy docs and code
     var extns = (plugin.cfg.archive && plugin.cfg.archive.extensions) ?
-                plugin.cfg.archive.extensions :      // new
-                plugin.cfg.main.archive_extensions ? // old code
-                plugin.cfg.main.archive_extensions :
-                plugin.cfg.main.archive_extns ?      // old docs
-                plugin.cfg.main.archive_extns :
+        plugin.cfg.archive.extensions :      // new
+        plugin.cfg.main.archive_extensions ? // old code
+        plugin.cfg.main.archive_extensions :
+            plugin.cfg.main.archive_extns ?      // old docs
+            plugin.cfg.main.archive_extns :
                 '';
 
     var maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
-                plugin.cfg.main.archive.max_depth :   // new
-                plugin.cfg.main.archive_max_depth ?   // old
-                plugin.cfg.main.archive_max_depth :
-                5;                                    // default
+        plugin.cfg.main.archive.max_depth :   // new
+        plugin.cfg.main.archive_max_depth ?   // old
+        plugin.cfg.main.archive_max_depth :
+            5;                                    // default
 
     plugin.cfg.archive = {
         max_depth: maxd,
@@ -67,11 +67,11 @@ exports.load_dissallowed_extns = function () {
 
     if (!plugin.re) plugin.re = {};
     plugin.re.bad_extn = new RegExp(
-            '\\.(?:' +
+        '\\.(?:' +
                 (plugin.cfg.main.disallowed_extensions
-                .replace(/\s+/,' ')
-                .split(/[;, ]/)
-                .join('|')) +
+                    .replace(/\s+/,' ')
+                    .split(/[;, ]/)
+                    .join('|')) +
             ')$', 'i');
 };
 
@@ -413,15 +413,15 @@ exports.disallowed_extensions = function (txn) {
 
     var bad = false;
     [ txn.notes.attachment.files, txn.notes.attachment.archive_files ]
-    .forEach(function (items) {
-        if (bad) return;
-        if (!items || !Array.isArray(items)) return;
-        for (var i=0; i < items.length; i++) {
-            if (!plugin.re.bad_extn.test(items[i])) continue;
-            bad = items[i].split('.').slice(0).pop();
-            break;
-        }
-    });
+        .forEach(function (items) {
+            if (bad) return;
+            if (!items || !Array.isArray(items)) return;
+            for (var i=0; i < items.length; i++) {
+                if (!plugin.re.bad_extn.test(items[i])) continue;
+                bad = items[i].split('.').slice(0).pop();
+                break;
+            }
+        });
 
     return bad;
 };
@@ -453,7 +453,7 @@ exports.check_attachments = function (next, connection) {
         for (var c=0; c<body.children.length; c++) {
             if (!body.children[c]) continue;
             var child_ct = ct_re.exec(
-                    body.children[c].header.get('content-type'));
+                body.children[c].header.get('content-type'));
             if (!child_ct) continue;
             connection.logdebug(this, 'found content type: ' + child_ct[1]);
             ctypes.push(child_ct[1]);
