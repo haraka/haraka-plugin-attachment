@@ -2,12 +2,12 @@
 
 process.env.NODE_ENV = 'test';
 
-var assert   = require('assert');
-var fixtures = require('haraka-test-fixtures');
+const assert   = require('assert');
+const fixtures = require('haraka-test-fixtures');
 // var config   = require('haraka-config');
 // console.log(config);
 
-var attach = new fixtures.plugin('index');
+const attach = new fixtures.plugin('index');
 // attach.config = config;
 // console.log(attach);
 

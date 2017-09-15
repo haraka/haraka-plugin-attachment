@@ -1,16 +1,16 @@
 // attachment
 
 // node.js builtins
-var fs     = require('fs');
-var exec   = require('child_process').exec;
-var path   = require('path');
-var crypto = require('crypto');
+const fs     = require('fs');
+const exec   = require('child_process').exec;
+const path   = require('path');
+const crypto = require('crypto');
 
 // npm dependencies
-var tmp    = require('tmp');
-var constants = require('haraka-constants');
+const tmp    = require('tmp');
+const constants = require('haraka-constants');
 
-var archives_disabled = false;
+let archives_disabled = false;
 
 exports.register = function () {
 
@@ -28,7 +28,7 @@ exports.register = function () {
 };
 
 exports.load_attachment_ini = function () {
-    var plugin = this;
+    const plugin = this;
 
     plugin.cfg = plugin.config.get('attachment.ini', function () {
         plugin.load_attachment_ini();
@@ -37,7 +37,7 @@ exports.load_attachment_ini = function () {
     plugin.cfg.timeout = (plugin.cfg.main.timeout || 30) * 1000;
 
     // repair a mismatch between legacy docs and code
-    var extns = (plugin.cfg.archive && plugin.cfg.archive.extensions) ?
+    const extns = (plugin.cfg.archive && plugin.cfg.archive.extensions) ?
         plugin.cfg.archive.extensions :      // new
         plugin.cfg.main.archive_extensions ? // old code
         plugin.cfg.main.archive_extensions :
@@ -45,7 +45,7 @@ exports.load_attachment_ini = function () {
             plugin.cfg.main.archive_extns :
                 '';
 
-    var maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
+    const maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
         plugin.cfg.main.archive.max_depth :   // new
         plugin.cfg.main.archive_max_depth ?   // old
         plugin.cfg.main.archive_max_depth :
@@ -61,7 +61,7 @@ exports.load_attachment_ini = function () {
 };
 
 exports.load_dissallowed_extns = function () {
-    var plugin = this;
+    const plugin = this;
 
     if (!plugin.cfg.main.disallowed_extensions) return;
 
@@ -76,23 +76,23 @@ exports.load_dissallowed_extns = function () {
 };
 
 exports.load_n_compile_re = function (name, file) {
-    var plugin = this;
-    var valid_re = [];
+    const plugin = this;
+    const valid_re = [];
 
-    var try_re = plugin.config.get(file, 'list', function () {
+    const try_re = plugin.config.get(file, 'list', function () {
         plugin.load_n_compile_re(name, file);
     });
 
-    for (var r=0; r < try_re.length; r++) {
+    for (let r=0; r < try_re.length; r++) {
         try {
-            var reg = new RegExp(try_re[r], 'i');
+            const reg = new RegExp(try_re[r], 'i');
+            valid_re.push(reg);
         }
         catch (e) {
             this.logerror('skipping invalid regexp: /' + try_re[r] +
                     '/ (' + e + ')');
             return;
         }
-        valid_re.push(reg);
     }
 
     if (!plugin.re) plugin.re = {};
@@ -102,7 +102,7 @@ exports.load_n_compile_re = function (name, file) {
 exports.options_to_object = function (options) {
     if (!options) return false;
 
-    var res = {};
+    const res = {};
     options.toLowerCase().replace(/\s+/,' ').split(/[;, ]/)
         .forEach(function (opt) {
             if (!opt) return;
@@ -115,19 +115,19 @@ exports.options_to_object = function (options) {
 };
 
 exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
-    var plugin = this;
+    const plugin = this;
 
     if (archives_disabled) {
         connection.logdebug(this, 'archive support disabled');
         return cb();
     }
 
-    var files = [];
-    var tmpfiles = [];
-    var depth_exceeded = false;
-    var count = 0;
-    var done_cb = false;
-    var timer;
+    const files = [];
+    const tmpfiles = [];
+    const depth_exceeded = false;
+    let count = 0;
+    let done_cb = false;
+    let timer;
 
     function do_cb (err, files2) {
         if (timer) clearTimeout(timer);
@@ -157,7 +157,7 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
             return;
         }
         count++;
-        var cmd = 'LANG=C bsdtar -tf ' + in_file;
+        const cmd = 'LANG=C bsdtar -tf ' + in_file;
         exec(cmd, { timeout: plugin.cfg.timeout },  function (err, stdout, stderr) {
             count--;
             if (err) {
@@ -173,14 +173,14 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
                 }
                 return do_cb(err);
             }
-            var g = stdout.split(/\r?\n/);
-            for (var i=0; i<g.length; i++) {
-                var file = g[i];
+            const g = stdout.split(/\r?\n/);
+            for (let i=0; i<g.length; i++) {
+                const file = g[i];
                 // Skip any blank lines
                 if (!file) continue;
                 connection.logdebug(plugin, 'file: ' + file + ' depth=' + depth);
                 files.push((prefix ? prefix + '/' : '') + file);
-                var extn = path.extname(file.toLowerCase());
+                const extn = path.extname(file.toLowerCase());
                 if (plugin.cfg.archive.exts[extn] ||
                     plugin.cfg.archive.exts[extn.substring(1)])
                 {
@@ -193,7 +193,7 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
                             if (err2) return do_cb(err2.message);
                             connection.logdebug(plugin, 'created tmp file: ' + tmpfile + '(fd=' + fd + ') for file ' + (prefix ? prefix + '/' : '') + file);
                             // Extract this file from the archive
-                            var cmd2 = 'LANG=C bsdtar -Oxf ' + in_file + ' --include="' + file2 + '" > ' + tmpfile;
+                            const cmd2 = 'LANG=C bsdtar -Oxf ' + in_file + ' --include="' + file2 + '" > ' + tmpfile;
                             tmpfiles.push([fd, tmpfile]);
                             connection.logdebug(plugin, 'running command: ' + cmd2);
                             count++;
@@ -234,17 +234,17 @@ function attachments_still_processing (txn) {
 }
 
 exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) {
-    var plugin = this;
-    var md5 = crypto.createHash('md5');
-    var digest;
-    var bytes = 0;
+    const plugin = this;
+    const md5 = crypto.createHash('md5');
+    let digest;
+    let bytes = 0;
     stream.on('data', function (data) {
         bytes += data.length;
         md5.update(data);
     });
     stream.once('end', function () {
         digest = md5.digest('hex');
-        var ca = ctype.match(/^(.*)?;\s+name="(.*)?"/);
+        const ca = ctype.match(/^(.*)?;\s+name="(.*)?"/);
         connection.transaction.results.push(plugin, { attach: {
             file: filename,
             ctype: (ca && ca[2] === filename) ? ca[1] : ctype,
@@ -260,7 +260,7 @@ exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) 
 exports.file_extension = function (filename) {
     if (!filename) return '';
 
-    var ext_match = filename.match(/(\.[^\. ]+)$/);
+    const ext_match = filename.match(/(\.[^. ]+)$/);
     if (!ext_match) return '';
     if (!ext_match[1]) return '';
 
@@ -268,9 +268,9 @@ exports.file_extension = function (filename) {
 };
 
 exports.content_type = function (connection, ctype) {
-    var plugin = this;
+    const plugin = this;
 
-    var ct_match = ctype.match(/^([^\/]+\/[^;\r\n ]+)/);
+    const ct_match = ctype.match(/^([^/]+\/[^;\r\n ]+)/);
     if (!ct_match) return '';
     if (!ct_match[1]) return '';
 
@@ -280,7 +280,7 @@ exports.content_type = function (connection, ctype) {
 };
 
 exports.has_archive_extension = function (file_ext) {
-    var plugin = this;
+    const plugin = this;
     // check with and without the dot prefixed
     if (plugin.cfg.archive.exts[file_ext]) return true;
     if (plugin.cfg.archive.exts[file_ext.substring(1)]) return true;
@@ -288,8 +288,8 @@ exports.has_archive_extension = function (file_ext) {
 };
 
 exports.start_attachment = function (connection, ctype, filename, body, stream) {
-    var plugin = this;
-    var txn = connection.transaction;
+    const plugin = this;
+    const txn = connection.transaction;
 
     function next () {
         if (attachments_still_processing(txn)) return;
@@ -298,8 +298,8 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
 
     plugin.compute_and_log_md5sum(connection, ctype, filename, stream);
 
-    var content_type = plugin.content_type(connection, ctype);
-    var file_ext     = plugin.file_extension(filename);
+    const content_type = plugin.content_type(connection, ctype);
+    const file_ext     = plugin.file_extension(filename);
 
     function add_to_attachments () {
         txn.notes.attachments.push({
@@ -347,7 +347,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
             return;
         }
         connection.logdebug(plugin, 'Got tmpfile: attachment="' + filename + '" tmpfile="' + fn + '" fd=' + fd);
-        var ws = fs.createWriteStream(fn);
+        const ws = fs.createWriteStream(fn);
         stream.pipe(ws);
         stream.resume();
         ws.on('error', function (error) {
@@ -361,8 +361,8 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
 };
 
 exports.expand_tmpfile = function (connection, fn, filename, cleanup, done) {
-    var plugin = this;
-    var txn = connection.transaction;
+    const plugin = this;
+    const txn = connection.transaction;
     plugin.unarchive_recursive(connection, fn, filename, function (err, files) {
         txn.notes.attachment.todo_count--;
         cleanup();
@@ -386,8 +386,8 @@ exports.expand_tmpfile = function (connection, fn, filename, cleanup, done) {
 };
 
 exports.init_attachment = function (next, connection) {
-    var plugin = this;
-    var txn = connection.transaction;
+    const plugin = this;
+    const txn = connection.transaction;
     txn.parse_body = 1;
 
     txn.notes.attachment = {
@@ -408,15 +408,15 @@ exports.init_attachment = function (next, connection) {
 };
 
 exports.disallowed_extensions = function (txn) {
-    var plugin = this;
+    const plugin = this;
     if (!plugin.re.bad_extn) return false;
 
-    var bad = false;
+    let bad = false;
     [ txn.notes.attachment.files, txn.notes.attachment.archive_files ]
         .forEach(function (items) {
             if (bad) return;
             if (!items || !Array.isArray(items)) return;
-            for (var i=0; i < items.length; i++) {
+            for (let i=0; i < items.length; i++) {
                 if (!plugin.re.bad_extn.test(items[i])) continue;
                 bad = items[i].split('.').slice(0).pop();
                 break;
@@ -427,22 +427,22 @@ exports.disallowed_extensions = function (txn) {
 };
 
 exports.check_attachments = function (next, connection) {
-    var plugin = this;
-    var txn = connection.transaction;
+    const plugin = this;
+    const txn = connection.transaction;
 
     // Check for any stored errors from the attachment hooks
     if (txn.notes.attachment.result) {
-        var result = txn.notes.attachment.result;
+        const result = txn.notes.attachment.result;
         return next(result[0], result[1]);
     }
 
-    var ctypes = txn.notes.attachment.ctypes;
+    const ctypes = txn.notes.attachment.ctypes;
 
     // Add in any content type from message body
-    var ct_re = /^([^\/]+\/[^;\r\n ]+)/;
-    var body = txn.body;
+    const ct_re = /^([^/]+\/[^;\r\n ]+)/;
+    const body = txn.body;
     if (body) {
-        var body_ct = ct_re.exec(body.header.get('content-type'));
+        const body_ct = ct_re.exec(body.header.get('content-type'));
         if (body_ct) {
             connection.logdebug(this, 'found content type: ' + body_ct[1]);
             ctypes.push(body_ct[1]);
@@ -450,9 +450,9 @@ exports.check_attachments = function (next, connection) {
     }
     // MIME parts
     if (body && body.children) {
-        for (var c=0; c<body.children.length; c++) {
+        for (let c=0; c<body.children.length; c++) {
             if (!body.children[c]) continue;
-            var child_ct = ct_re.exec(
+            const child_ct = ct_re.exec(
                 body.children[c].header.get('content-type'));
             if (!child_ct) continue;
             connection.logdebug(this, 'found content type: ' + child_ct[1]);
@@ -460,27 +460,27 @@ exports.check_attachments = function (next, connection) {
         }
     }
 
-    var bad_extn = this.disallowed_extensions(txn);
+    const bad_extn = this.disallowed_extensions(txn);
     if (bad_extn) {
         return next(constants.DENY, 'Message contains disallowed file extension (' +
                     bad_extn + ')');
     }
 
-    var ctypes_result = this.check_items_against_regexps(ctypes, plugin.re.ctype);
+    const ctypes_result = this.check_items_against_regexps(ctypes, plugin.re.ctype);
     if (ctypes_result) {
         connection.loginfo(this, 'match ctype="' + ctypes_result[0] + '" regexp=/' + ctypes_result[1] + '/');
         return next(constants.DENY, 'Message contains unacceptable content type (' + ctypes_result[0] + ')');
     }
 
-    var files = txn.notes.attachment.files;
-    var files_result = this.check_items_against_regexps(files, plugin.re.file);
+    const files = txn.notes.attachment.files;
+    const files_result = this.check_items_against_regexps(files, plugin.re.file);
     if (files_result) {
         connection.loginfo(this, 'match file="' + files_result[0] + '" regexp=/' + files_result[1] + '/');
         return next(constants.DENY, 'Message contains unacceptable attachment (' + files_result[0] + ')');
     }
 
-    var archive_files = txn.notes.attachment.archive_files;
-    var archives_result = this.check_items_against_regexps(archive_files, plugin.re.archive);
+    const archive_files = txn.notes.attachment.archive_files;
+    const archives_result = this.check_items_against_regexps(archive_files, plugin.re.archive);
     if (archives_result) {
         connection.loginfo(this, 'match file="' + archives_result[0] + '" regexp=/' + archives_result[1] + '/');
         return next(constants.DENY, 'Message contains unacceptable attachment (' + archives_result[0] + ')');
@@ -494,8 +494,8 @@ exports.check_items_against_regexps = function (items, regexps) {
     if (!Array.isArray(regexps) || !Array.isArray(items)) return false;
     if (!regexps.length || !items.length) return false;
 
-    for (var r=0; r < regexps.length; r++) {
-        for (var i=0; i < items.length; i++) {
+    for (let r=0; r < regexps.length; r++) {
+        for (let i=0; i < items.length; i++) {
             if (regexps[r].test(items[i])) {
                 return [ items[i], regexps[r] ];
             }
@@ -505,7 +505,7 @@ exports.check_items_against_regexps = function (items, regexps) {
 };
 
 exports.wait_for_attachment_hooks = function (next, connection) {
-    var txn = connection.transaction;
+    const txn = connection.transaction;
     if (txn.notes.attachment.todo_count > 0) {
         // We still have attachment hooks running
         txn.notes.attachment.next = next;
