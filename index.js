@@ -38,18 +38,18 @@ exports.load_attachment_ini = function () {
 
     // repair a mismatch between legacy docs and code
     const extns = (plugin.cfg.archive && plugin.cfg.archive.extensions) ?
-        plugin.cfg.archive.extensions :      // new
-        plugin.cfg.main.archive_extensions ? // old code
-        plugin.cfg.main.archive_extensions :
+        plugin.cfg.archive.extensions :          // new
+        plugin.cfg.main.archive_extensions ?     // old code
+            plugin.cfg.main.archive_extensions :
             plugin.cfg.main.archive_extns ?      // old docs
-            plugin.cfg.main.archive_extns :
+                plugin.cfg.main.archive_extns :
                 '';
 
     const maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
-        plugin.cfg.main.archive.max_depth :   // new
-        plugin.cfg.main.archive_max_depth ?   // old
-        plugin.cfg.main.archive_max_depth :
-            5;                                    // default
+        plugin.cfg.main.archive.max_depth :      // new
+        plugin.cfg.main.archive_max_depth ?      // old
+            plugin.cfg.main.archive_max_depth :
+            5;                                   // default
 
     plugin.cfg.archive = {
         max_depth: maxd,
