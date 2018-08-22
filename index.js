@@ -247,7 +247,7 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
                     continue;
                 }
 
-                connection.logdebug(plugin, 'need to extract file: ' + file);
+                connection.logdebug(plugin, `need to extract file: ${file}`);
                 count++;
                 depth++;
                 (function (file2, depth2) {
