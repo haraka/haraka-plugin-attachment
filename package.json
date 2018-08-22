@@ -3,7 +3,7 @@
   "name": "haraka-plugin-attachment",
   "license": "MIT",
   "description": "A message attachment scanning plugin for Haraka",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "homepage": "http://haraka.github.io",
   "repository": {
     "type": "git",

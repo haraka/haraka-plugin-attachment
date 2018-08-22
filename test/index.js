@@ -4,11 +4,8 @@ process.env.NODE_ENV = 'test';
 
 const assert   = require('assert');
 const fixtures = require('haraka-test-fixtures');
-// var config   = require('haraka-config');
-// console.log(config);
 
 const attach = new fixtures.plugin('index');
-// attach.config = config;
 // console.log(attach);
 
 describe('register', function () {
@@ -25,13 +22,14 @@ describe('register', function () {
 
     it('loads the config', function (done) {
         attach.register();
-        console.log(attach.cfg.archive);
+        // console.log(attach.cfg.archive);
         // assert.deepEqual(attach.cfg.main, {});
         // assert.deepEqual(attach.cfg.filename, { 'resume.zip': undefined });
         assert.deepEqual(attach.cfg, {
             main: {
                 archive_max_depth: 10,
                 archive_extns: '.zip,.tar,.tgz,.taz,.z,.gz,.rar,.7z',
+                "disallowed_extensions": "ade,adp,bat,chm,cmd,com,cpl,exe,hta,ins,isp,jar,jse,lib,lnk,mde,msc,msp,mst,pif,scr,sct,shb,sys,vb,vbe,vbs,vxd,wsc,wsf,wsh,dll,zip",
                 timeout: 30
             },
             timeout: 30000,
@@ -50,129 +48,116 @@ describe('register', function () {
             } });
         done();
     });
-});
+})
 
 describe('config', function () {
-    // it('has archive section', function (done) {
-    //     attach.register();
-    //     // console.log(attach);
-    //     // assert.ok(attach.cfg.archive.max_depth);
-    //     // assert.ok(attach.cfg.archive.extensions)
-    //     done();
-    // });
-});
-/*
+    it('has archive section', function (done) {
+        attach.register();
+        // console.log(attach.cfg);
+        assert.equal(attach.cfg.archive.max_depth, 10);
+        assert.ok(attach.cfg.archive.exts)
+        done();
+    });
+})
+
 describe('options_to_object', function () {
     it('converts string to object', function (done) {
-        var expected = {'.gz': true, '.zip': true};
+        const expected = {'.gz': true, '.zip': true};
         assert.deepEqual(expected, attach.options_to_object('gz zip'));
         assert.deepEqual(expected, attach.options_to_object('gz,zip'));
         assert.deepEqual(expected, attach.options_to_object(' gz , zip '));
         done();
     });
-});
+})
 
-describe('load_disallowed_extensions', function () {
+describe('load_dissallowed_extns', function () {
     it('loads comma separated options', function (done) {
-        attach.cfg = { main: { bad_filename_extensions: 'exe,scr' } };
-        attach.load_disallowed_extensions();
+        attach.cfg = { main: { disallowed_extensions: 'exe,scr' } };
+        attach.load_dissallowed_extns();
 
-        assert.ok(assert.re.bad_extn);
-        assert.ok(assert.re.bad_extn.test('bad.scr'));
+        assert.ok(attach.re.bad_extn);
+        assert.ok(attach.re.bad_extn.test('bad.scr'));
         done();
     });
 
     it('loads space separated options', function (done) {
-        attach.cfg = { main: { bad_filename_extensions: 'dll tnef' } };
-        attach.load_disallowed_extensions();
-        assert.ok(assert.re.bad_extn);
-        assert.ok(assert.re.bad_extn.test('bad.dll'));
+        attach.cfg = { main: { disallowed_extensions: 'dll tnef' } };
+        attach.load_dissallowed_extns();
+        assert.ok(attach.re.bad_extn);
+        assert.ok(attach.re.bad_extn.test('bad.dll'));
         done();
     });
-});
-*/
+})
 
-/*
+describe('disallowed_extensions', function () {
+    it('blocks filename extensions in attachment_files', function (done) {
 
-var _set_up = function (done) {
-    this.connection = Connection.createConnection();
-    this.connection.transaction = stub;
-    this.connection.transaction.results = new ResultStore(assert);
-    this.connection.transaction.notes = {};
-    done();
-};
+        attach.cfg = { main: { disallowed_extensions: 'exe;scr' } };
+        attach.load_dissallowed_extns();
 
+        const connection = fixtures.connection.createConnection();
+        connection.init_transaction();
+        const txn = connection.transaction;
+        txn.notes.attachment = {};
 
+        txn.notes.attachment.files = ['naughty.exe'];
+        assert.equal('exe', attach.disallowed_extensions(txn));
 
-exports.dissallowed_extns = {
-    setUp : _set_up,
-    'attachment_files': function (test) {
-        test.expect(2);
-        assert.cfg = { main: { disallowed_extensions: 'exe;scr' } };
-        assert.load_dissallowed_extns();
-
-        var txn = this.connection.transaction;
-        txn.notes.attachment_files = ['naughty.exe'];
-        test.equal('exe', assert.disallowed_extensions(txn));
-
-        txn.notes.attachment_files = ['good.pdf', 'naughty.exe'];
-        test.equal('exe', assert.disallowed_extensions(txn));
+        txn.notes.attachment.files = ['good.pdf', 'naughty.exe'];
+        assert.equal('exe', attach.disallowed_extensions(txn));
         done();
-    },
-    'attachment_archive_files': function (test) {
-        test.expect(3);
-        assert.cfg = { main: { disallowed_extensions: 'dll tnef' } };
-        assert.load_dissallowed_extns();
+    })
 
-        var txn = this.connection.transaction;
-        txn.notes.attachment_archive_files = ['icky.tnef'];
-        test.equal('tnef', assert.disallowed_extensions(txn));
+    it('blocks filename extensions in archive_files', function (done) {
 
-        txn.notes.attachment_archive_files = ['good.pdf', 'naughty.dll'];
-        test.equal('dll', assert.disallowed_extensions(txn));
+        attach.cfg = { main: { disallowed_extensions: 'dll tnef' } };
+        attach.load_dissallowed_extns();
 
-        txn.notes.attachment_archive_files = ['good.pdf', 'better.png'];
-        test.equal(false, assert.disallowed_extensions(txn));
-        done();
-    },
-};
+        const connection = fixtures.connection.createConnection();
+        connection.init_transaction();
+        const txn = connection.transaction;
+        txn.notes.attachment = {};
 
-// exports.load_n_compile_re = {
-//     setUp : _set_up,
-//     'loads regex lines from file, compiles to array': function (test) {
-//         test.expect(2);
+        txn.notes.attachment.archive_files = ['icky.tnef'];
+        assert.equal('tnef', attach.disallowed_extensions(txn));
 
-//         assert.load_n_compile_re('test', 'attachment.filename.regex');
-//         assert.ok(assert.re.test);
-//         assert.ok(assert.re.test[0].test('foo.exe'));
+        txn.notes.attachment.archive_files = ['good.pdf', 'naughty.dll'];
+        assert.equal('dll', attach.disallowed_extensions(txn));
 
-//         done();
-//     },
-// };
-
-exports.check_items_against_regexps = {
-    setUp : _set_up,
-    'positive': function (test) {
-        test.expect(2);
-        assert.load_n_compile_re('test', 'attachment.filename.regex');
-
-        assert.ok(assert.check_items_against_regexps(
-                    ['file.exe'], assert.re.test));
-        assert.ok(assert.check_items_against_regexps(
-                    ['fine.pdf','awful.exe'], assert.re.test));
+        txn.notes.attachment.archive_files = ['good.pdf', 'better.png'];
+        assert.equal(false, attach.disallowed_extensions(txn));
 
         done();
-    },
-    'negative': function (test) {
-        test.expect(2);
-        assert.load_n_compile_re('test', 'attachment.filename.regex');
+    })
+})
 
-        assert.ok(!assert.check_items_against_regexps(
-                    ['file.png'], assert.re.test));
-        assert.ok(!assert.check_items_against_regexps(
-                    ['fine.pdf','godiva.chocolate'], assert.re.test));
+describe('load_n_compile_re', function () {
+    it('loads regex lines from file, compiles to array', function (done) {
+
+        attach.load_n_compile_re('test', 'attachment.filename.regex');
+        assert.ok(attach.re.test);
+        assert.ok(attach.re.test[0].test('foo.exe'));
 
         done();
-    },
-};
-*/
+    })
+})
+
+describe('check_items_against_regexps', function () {
+    it('positive', function (done) {
+        attach.load_n_compile_re('test', 'attachment.filename.regex');
+
+        assert.ok(attach.check_items_against_regexps(['file.exe'], attach.re.test));
+        assert.ok(attach.check_items_against_regexps(['fine.pdf','awful.exe'], attach.re.test));
+
+        done();
+    })
+
+    it('negative', function (done) {
+        attach.load_n_compile_re('test', 'attachment.filename.regex');
+
+        assert.ok(!attach.check_items_against_regexps(['file.png'], attach.re.test));
+        assert.ok(!attach.check_items_against_regexps(['fine.pdf','godiva.chocolate'], attach.re.test));
+
+        done();
+    })
+})
