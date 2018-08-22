@@ -8,6 +8,16 @@ const fixtures = require('haraka-test-fixtures');
 const attach = new fixtures.plugin('index');
 // console.log(attach);
 
+describe('find_bsdtar_path', function () {
+    it('finds the bsdtar binary', function (done) {
+        attach.find_bsdtar_path((err, dir) => {
+            assert.ifError(err);
+            assert.ok(dir);
+            done();
+        });
+    })
+})
+
 describe('register', function () {
     it('is a function', function (done) {
         assert.equal('function', typeof attach.register);
@@ -27,8 +37,6 @@ describe('register', function () {
         // assert.deepEqual(attach.cfg.filename, { 'resume.zip': undefined });
         assert.deepEqual(attach.cfg, {
             main: {
-                archive_max_depth: 10,
-                archive_extns: '.zip,.tar,.tgz,.taz,.z,.gz,.rar,.7z',
                 "disallowed_extensions": "ade,adp,bat,chm,cmd,com,cpl,exe,hta,ins,isp,jar,jse,lib,lnk,mde,msc,msp,mst,pif,scr,sct,shb,sys,vb,vbe,vbs,vxd,wsc,wsf,wsh,dll,zip",
                 timeout: 30
             },
@@ -36,14 +44,14 @@ describe('register', function () {
             archive: {
                 max_depth: 10,
                 exts: {
-                    '.zip': true,
-                    '.tar': true,
-                    '.tgz': true,
-                    '.taz': true,
-                    '.z': true,
-                    '.gz': true,
-                    '.rar': true,
-                    '.7z': true
+                    'zip': true,
+                    'tar': true,
+                    'tgz': true,
+                    'taz': true,
+                    'z':   true,
+                    'gz':  true,
+                    'rar': true,
+                    '7z':  true
                 }
             } });
         done();
@@ -62,7 +70,7 @@ describe('config', function () {
 
 describe('options_to_object', function () {
     it('converts string to object', function (done) {
-        const expected = {'.gz': true, '.zip': true};
+        const expected = {'gz': true, 'zip': true};
         assert.deepEqual(expected, attach.options_to_object('gz zip'));
         assert.deepEqual(expected, attach.options_to_object('gz,zip'));
         assert.deepEqual(expected, attach.options_to_object(' gz , zip '));
@@ -87,6 +95,18 @@ describe('load_dissallowed_extns', function () {
         assert.ok(attach.re.bad_extn.test('bad.dll'));
         done();
     });
+})
+
+describe('file_extension', function () {
+    it('returns a file extension from a filename', function (done) {
+        assert.equal('ext', attach.file_extension('file.ext'));
+        done();
+    })
+
+    it('returns empty string for no extension', function (done) {
+        assert.equal('', attach.file_extension('file'));
+        done();
+    })
 })
 
 describe('disallowed_extensions', function () {
@@ -158,6 +178,16 @@ describe('check_items_against_regexps', function () {
         assert.ok(!attach.check_items_against_regexps(['file.png'], attach.re.test));
         assert.ok(!attach.check_items_against_regexps(['fine.pdf','godiva.chocolate'], attach.re.test));
 
+        done();
+    })
+})
+
+describe('has_archive_extension', function () {
+    it('returns true for zip', function (done) {
+        attach.load_attachment_ini();
+        // console.log(attach.cfg.archive);
+        assert.equal(true, attach.has_archive_extension('.zip'));
+        assert.equal(true, attach.has_archive_extension('zip'));
         done();
     })
 })
