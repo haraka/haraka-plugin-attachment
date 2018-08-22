@@ -11,12 +11,12 @@ const attach = new fixtures.plugin('index');
 describe('find_bsdtar_path', function () {
     it('finds the bsdtar binary', function (done) {
         attach.find_bsdtar_path((err, dir) => {
-            assert.ifError(err);
-            // fails on Travis
             if (dir) {
+                assert.ifError(err);
                 assert.ok(dir);
             }
             else {
+                // fails on Travis
                 console.error('test error: unable to find bsdtar');
             }
             done();
