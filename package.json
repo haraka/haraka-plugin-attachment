@@ -20,7 +20,7 @@
     "cover": "NODE_ENV=cov ./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha"
   },
   "dependencies": {
-    "tmp": "0.2.0",
+    "tmp": "0.2.1",
     "haraka-constants": "*"
   },
   "optionalDependencies": {},
