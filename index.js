@@ -165,7 +165,6 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
 
     const files = [];
     const tmpfiles = [];
-    const depth_exceeded = false;
     let count = 0;
     let done_cb = false;
     let timer;
@@ -191,8 +190,8 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
     }
 
     function listFiles (in_file, prefix, depth) {
-        if (!depth) depth = 0;
-        if (depth >= plugin.cfg.archive.max_depth || depth_exceeded) {
+        if (!depth) depth = 1;
+        if (depth >= plugin.cfg.archive.max_depth) {
             if (count === 0) {
                 return do_cb(new Error('maximum archive depth exceeded'));
             }
@@ -256,9 +255,9 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
                         if (err2) return do_cb(err2.message);
                         connection.logdebug(plugin, `created tmp file: ${tmpfile} (fd=${fd}) for file ${(prefix ? prefix + '/' : '')} ${file2}`);
                         // Extract this file from the archive
-                        const cmd2 = 'LANG=C bsdtar -Oxf ' + in_file + ' --include="' + file2 + '" > ' + tmpfile;
+                        const cmd2 = `LANG=C bsdtar -Oxf ${in_file} --include="${file2}" > ${tmpfile}`;
                         tmpfiles.push([fd, tmpfile]);
-                        connection.logdebug(plugin, 'running command: ' + cmd2);
+                        connection.logdebug(plugin, `running command: ${cmd2}`);
                         count++;
 
                         const cmd = spawn(plugin.bsdtar_path,
@@ -303,7 +302,7 @@ exports.unarchive_recursive = function (connection, f, archive_file_name, cb) {
                 })(file, depth);
             }
             if (depth > 0) depth--;
-            connection.logdebug(plugin, 'finish: count=' + count + ' depth=' + depth);
+            connection.logdebug(plugin, `finish: count=${count} depth=${depth}`);
             if (count === 0) {
                 return do_cb(null, files);
             }
@@ -366,7 +365,7 @@ exports.content_type = function (connection, ctype) {
     if (!ct_match) return '';
     if (!ct_match[1]) return '';
 
-    connection.logdebug(plugin, 'found content type: ' + ct_match[1]);
+    connection.logdebug(plugin, `found content type: ct_match[1]`);
     connection.transaction.notes.attachment.ctypes.push(ct_match[1]);
     return ct_match[1];
 }
@@ -540,7 +539,7 @@ exports.check_attachments = function (next, connection) {
     if (body) {
         const body_ct = ct_re.exec(body.header.get('content-type'));
         if (body_ct) {
-            connection.logdebug(this, 'found content type: ' + body_ct[1]);
+            connection.logdebug(this, `found content type: body_ct[1]`);
             ctypes.push(body_ct[1]);
         }
     }
@@ -551,7 +550,7 @@ exports.check_attachments = function (next, connection) {
             const child_ct = ct_re.exec(
                 body.children[c].header.get('content-type'));
             if (!child_ct) continue;
-            connection.logdebug(this, 'found content type: ' + child_ct[1]);
+            connection.logdebug(this, `found content type: child_ct[1]`);
             ctypes.push(child_ct[1]);
         }
     }
