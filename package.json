@@ -1,5 +1,5 @@
 {
-  "author": "Haraka Team <harakamail@gmail.com>",
+  "author": "Haraka Team <haraka.mail@gmail.com>",
   "name": "haraka-plugin-attachment",
   "license": "MIT",
   "description": "A message attachment scanning plugin for Haraka",
@@ -25,7 +25,7 @@
   },
   "optionalDependencies": {},
   "devDependencies": {
-    "eslint": ">=3",
+    "eslint": ">=6",
     "eslint-plugin-haraka": "*",
     "haraka-config": "*",
     "haraka-test-fixtures": "*",
