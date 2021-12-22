@@ -1,8 +1,8 @@
 
 
-### 1.0.6 - Mon NN, 20YY
+### 1.0.6 - Dec 22, 2021
 
-
+- Fix issue with nested archives not getting counted, #26
 - replace travis & appveyor with GHA
 
 
