@@ -2,10 +2,9 @@ attachment
 ==========
 
 [![Build Status][ci-img]][ci-url]
-[![Code Climate][clim-img]][clim-url]
-[![Greenkeeper badge][gk-img]][gk-url]
-[![NPM][npm-img]][npm-url]
 [![Windows Build Status][ci-win-img]][ci-win-url]
+[![Code Climate][clim-img]][clim-url]
+[![NPM][npm-img]][npm-url]
 <!-- doesn't work in haraka plugins... yet. [![Code Coverage][cov-img]][cov-url]-->
 
 This plugin allows you to reject messages based on Content-Type within the message or any MIME parts or on the filename of any attachments.
@@ -91,7 +90,5 @@ Configuration
 [cov-url]: https://codecov.io/github/haraka/haraka-plugin-attachment
 [clim-img]: https://codeclimate.com/github/haraka/haraka-plugin-attachment/badges/gpa.svg
 [clim-url]: https://codeclimate.com/github/haraka/haraka-plugin-attachment
-[gk-img]: https://badges.greenkeeper.io/haraka/haraka-plugin-attachment.svg
-[gk-url]: https://greenkeeper.io/
 [npm-img]: https://nodei.co/npm/haraka-plugin-attachment.png
 [npm-url]: https://www.npmjs.com/package/haraka-plugin-attachment
