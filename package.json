@@ -14,7 +14,7 @@
     "node": ">= 12"
   },
   "scripts": {
-    "test": "npx mocha",
+    "test": "npx mocha --exit",
     "lint": "npx eslint *.js test",
     "lintfix": "npx eslint --fix *.js test"
   },
