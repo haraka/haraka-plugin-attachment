@@ -1,28 +1,26 @@
 'use strict';
-/*eslint no-shadow: ["error", { "allow": ["file", "depth", "code", "signal"] }]*/
-// attachment
 
 const fs = require('fs');
-const { spawn } = require('child_process');
 const path = require('path');
+const { spawn } = require('child_process');
 const crypto = require('crypto');
 
 let tmp;
-let bsdtar_path;
 let archives_disabled = false;
-
 
 exports.register = function () {
 
     this.load_tmp_module();
     this.load_attachment_ini();
 
+    this.re = { ct: /^([^/]+\/[^;\r\n ]+)/ } // content type
+
     this.load_n_compile_re('file',    'attachment.filename.regex');
     this.load_n_compile_re('ctype',   'attachment.ctype.regex');
     this.load_n_compile_re('archive', 'attachment.archive.filename.regex');
 
-    this.register_hook('data_post', 'wait_for_attachment_hooks');
-    this.register_hook('data_post', 'check_attachments');
+    this.register_hook('data_post',   'wait_for_attachment_hooks');
+    this.register_hook('data_post',   'check_attachments');
 }
 
 exports.load_tmp_module = function () {
@@ -94,7 +92,7 @@ exports.hook_init_master = exports.hook_init_child = function (next) {
         }
         else {
             plugin.logdebug(`found bsdtar in ${dir}`);
-            plugin.bsdtar_path = bsdtar_path = `${dir}/bsdtar`;
+            plugin.bsdtar_path = `${dir}/bsdtar`;
         }
         next();
     });
@@ -213,7 +211,7 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
                     return reject(`"${cmd_path} ${args.join(' ')}" terminated by signal: ${signal}`);
                 }
 
-                return resolve(output);
+                resolve(output);
             });
         });
     }
@@ -244,7 +242,7 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
         try {
             // bsdtar seems to be asking for password if archive is encrypted workaround with --passphrase will end up
             // with "Incorrect passphrase" for encrypted archives, but will be ignored with nonencrypted
-            await timeoutedSpawn(bsdtar_path,
+            await timeoutedSpawn(plugin.bsdtar_path,
                 ['-Oxf', in_file, `--include=${file}`, '--passphrase', 'deliberately_invalid'],
                 {
                     'cwd': '/tmp',
@@ -263,7 +261,7 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
 
     async function listArchive (in_file) {
         try {
-            const lines = await timeoutedSpawn(bsdtar_path, ['-tf', in_file, '--passphrase', 'deliberately_invalid'], {
+            const lines = await timeoutedSpawn(plugin.bsdtar_path, ['-tf', in_file, '--passphrase', 'deliberately_invalid'], {
                 'cwd': '/tmp',
                 'env': {'LANG': 'C'},
             });
@@ -359,6 +357,52 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
     }
 }
 
+exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) {
+    const plugin = this;
+    const md5 = crypto.createHash('md5');
+    let digest;
+    let bytes = 0;
+
+    stream.on('data', (data) => {
+        md5.update(data);
+        bytes += data.length;
+    })
+
+    stream.once('end', () => {
+        digest = md5.digest('hex');
+        const ca = ctype.match(/^(.*)?;\s+name="(.*)?"/);
+        connection.transaction.results.push(plugin, { attach:
+            {
+                file: filename,
+                ctype: (ca && ca[2] === filename) ? ca[1] : ctype,
+                md5: digest,
+                bytes,
+            },
+        });
+        connection.loginfo(plugin, `file="${filename}" ctype="${ctype}" md5=${digest} bytes=${bytes}`);
+    })
+}
+
+exports.file_extension = function (filename) {
+    if (!filename) return '';
+
+    const ext_match = filename.match(/\.([^. ]+)$/);
+    if (!ext_match || !ext_match[1]) return '';
+
+    return ext_match[1].toLowerCase();
+}
+
+exports.content_type = function (connection, ctype) {
+    const plugin = this;
+
+    const ct_match = ctype.match(plugin.re.ct);
+    if (!ct_match || !ct_match[1]) return 'unknown/unknown';
+
+    connection.logdebug(plugin, `found content type: ct_match[1]`);
+    connection.transaction.notes.attachment_ctypes.push(ct_match[1]);
+    return ct_match[1].toLowerCase();
+}
+
 exports.isArchive = function (file_ext) {
     // check with and without the dot prefixed
     if (this.cfg.archive.exts[file_ext]) return true;
@@ -376,20 +420,14 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
         }
     }
 
-    // Parse Content-Type
-    let ct;
-    if ((ct = ctype.match(/^([^/]+\/[^;\r\n ]+)/)) && ct[1]) {
-        connection.logdebug(plugin, `found content type: ${ct[1]}`);
-        txn.notes.attachment_ctypes.push(ct[1]);
-    }
+    plugin.compute_and_log_md5sum(connection, ctype, filename, stream);
+
+    const ct       = plugin.content_type(connection, ctype);
+    const file_ext = plugin.file_extension(filename);
 
     // Parse filename
-    let ext;
-    let fileext = '.unknown';
+    const fileext = file_ext || '.unknown';
     if (filename) {
-        if ((ext = filename.match(/(\.[^. ]+)$/)) && ext[1]) {
-            fileext = ext[1].toLowerCase();
-        }
         txn.notes.attachment_files.push(filename);
     }
 
@@ -409,23 +447,25 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
         digest = md5.digest('hex');
         connection.loginfo(plugin, `file="${filename}" ctype="${ctype}" md5=${digest} bytes=${bytes}`);
         txn.notes.attachments.push({
-            ctype: ((ct && ct[1]) ? ct[1].toLowerCase() : 'unknown/unknown'),
+            ctype: ct,
             filename: (filename ? filename : ''),
-            extension: (ext && ext[1] ? ext[1].toLowerCase() : ''),
+            extension: file_ext,
             md5: ((digest) ? digest : ''),
         });
     });
 
     if (!filename) return;
+
     connection.logdebug(plugin, `found attachment file: ${filename}`);
     // See if filename extension matches archive extension list
-    // We check with the dot prefixed and without
     if (archives_disabled || !plugin.isArchive(fileext)) return;
 
     connection.logdebug(plugin, `found ${fileext} on archive list`);
     txn.notes.attachment_count++;
+
     stream.connection = connection;
     stream.pause();
+
     tmp.file((err, fn, fd) => {
         function cleanup () {
             fs.close(fd, () => {
@@ -455,7 +495,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
             txn.notes.attachment_result = [ DENYSOFT, error.message ];
             connection.logerror(plugin, `stream error: ${error.message}`);
             cleanup();
-            return next();
+            next();
         });
 
         ws.on('close', () => {
@@ -486,7 +526,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
 
                 txn.notes.attachment_archive_files = txn.notes.attachment_archive_files.concat(files);
                 connection.resume();
-                return next();
+                next();
             });
         });
     });
@@ -510,6 +550,24 @@ exports.hook_data = function (next, connection) {
     return next();
 }
 
+exports.disallowed_extensions = function (txn) {
+    const plugin = this;
+    if (!plugin.re.bad_extn) return false;
+
+    let bad = false;
+    [ txn.notes.attachment.files, txn.notes.attachment.archive_files ].forEach(items => {
+        if (bad) return;
+        if (!items || !Array.isArray(items)) return;
+        for (let i=0; i < items.length; i++) {
+            if (!plugin.re.bad_extn.test(items[i])) continue;
+            bad = items[i].split('.').slice(0).pop();
+            break;
+        }
+    })
+
+    return bad;
+}
+
 exports.check_attachments = function (next, connection) {
     const txn = connection?.transaction;
     if (!txn) return next();
@@ -523,10 +581,9 @@ exports.check_attachments = function (next, connection) {
     const ctypes = txn.notes.attachment_ctypes;
 
     // Add in any content type from message body
-    const ct_re = /^([^/]+\/[^;\r\n ]+)/;
     const body = txn.body;
     let body_ct;
-    if (body && (body_ct = ct_re.exec(body.header.get('content-type')))) {
+    if (body && (body_ct = this.re.ct.exec(body.header.get('content-type')))) {
         connection.logdebug(this, `found content type: ${body_ct[1]}`);
         ctypes.push(body_ct[1]);
     }
@@ -534,7 +591,7 @@ exports.check_attachments = function (next, connection) {
     if (body && body.children) {
         for (let c=0; c<body.children.length; c++) {
             let child_ct;
-            if (body.children[c] && (child_ct = /^([^/]+\/[^;\r\n ]+)/.exec(body.children[c].header.get('content-type')))) {
+            if (body.children[c] && (child_ct = this.re.ct.exec(body.children[c].header.get('content-type')))) {
                 connection.logdebug(this, `found content type: ${child_ct[1]}`);
                 ctypes.push(child_ct[1]);
             }
