@@ -570,23 +570,12 @@ exports.check_attachments = function (next, connection) {
 }
 
 exports.check_items_against_regexps = function (items, regexps) {
-    if ((regexps && Array.isArray(regexps) && regexps.length > 0) &&
-        (items && Array.isArray(items) && items.length > 0)) {
-        for (let r=0; r < regexps.length; r++) {
-            let reg;
-            try {
-                reg = new RegExp(regexps[r], 'i');
-            }
-            catch (e) {
-                this.logerror(`skipping invalid regexp: /${regexps[r]}/ (${e})`);
-            }
-            if (reg) {
-                for (let i=0; i < items.length; i++) {
-                    if (reg.test(items[i])) {
-                        return [ items[i], regexps[r] ];
-                    }
-                }
-            }
+    if (!Array.isArray(regexps) || !Array.isArray(items)) return false;
+    if (!regexps?.length || !items?.length) return false;
+
+    for (let r=0; r < regexps.length; r++) {
+        for (let i=0; i < items.length; i++) {
+            if (regexps[r].test(items[i])) return [ items[i], regexps[r] ];
         }
     }
     return false;
