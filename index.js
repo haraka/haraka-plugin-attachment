@@ -6,27 +6,34 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const path = require('path');
 const crypto = require('crypto');
-const utils = require('haraka-utils');
 
 let tmp;
 let bsdtar_path;
 let archives_disabled = false;
-const default_archive_extns = [
-    '.zip', '.tar', '.tgz', '.taz', '.z', '.gz', '.rar', '.7z'
-];
+
 
 exports.register = function () {
+
+    this.load_tmp_module();
+    this.load_attachment_ini();
+
+    this.load_n_compile_re('file',    'attachment.filename.regex');
+    this.load_n_compile_re('ctype',   'attachment.ctype.regex');
+    this.load_n_compile_re('archive', 'attachment.archive.filename.regex');
+
+    this.register_hook('data_post', 'wait_for_attachment_hooks');
+    this.register_hook('data_post', 'check_attachments');
+}
+
+exports.load_tmp_module = function () {
     try {
         tmp = require('tmp');
         tmp.setGracefulCleanup();
     }
     catch (e) {
         archives_disabled = true;
-        this.logwarn(`This plugin requires the 'tmp' module to extract filenames from archive files`);
+        this.logwarn(`the 'tmp' module is required to extract filenames from archives`);
     }
-    this.load_attachment_ini();
-    this.register_hook('data_post', 'wait_for_attachment_hooks');
-    this.register_hook('data_post', 'check_attachments');
 }
 
 exports.load_attachment_ini = function () {
@@ -37,9 +44,24 @@ exports.load_attachment_ini = function () {
     });
 
     plugin.cfg.timeout = (plugin.cfg.main.timeout || 30) * 1000;
-    plugin.archive_max_depth = plugin.cfg.main.archive_max_depth || 5;
-    plugin.archive_exts = options_to_array(plugin.cfg.main.archive_extensions) ||
-        default_archive_extns;
+
+    // repair a mismatch between legacy docs and code
+    const extns = (plugin.cfg.archive && plugin.cfg.archive.extensions) ?
+        plugin.cfg.archive.extensions :          // new
+        plugin.cfg.main.archive_extensions ?     // old code
+            plugin.cfg.main.archive_extensions :
+            plugin.cfg.main.archive_extns ?      // old docs
+                plugin.cfg.main.archive_extns :
+                'zip tar tgz taz z gz rar 7z';
+
+    const maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
+        plugin.cfg.archive.max_depth :           // new
+        plugin.cfg.main.archive_max_depth ?      // old
+            plugin.cfg.main.archive_max_depth :
+            5;
+
+    if (!plugin.cfg.archive.max_depth && maxd) plugin.cfg.archive.max_depth = maxd;
+    plugin.cfg.archive.exts = this.options_to_object(extns)
 }
 
 exports.find_bsdtar_path = cb => {
@@ -74,24 +96,58 @@ exports.hook_init_master = exports.hook_init_child = function (next) {
             plugin.logdebug(`found bsdtar in ${dir}`);
             plugin.bsdtar_path = bsdtar_path = `${dir}/bsdtar`;
         }
-        return next();
+        next();
     });
 }
 
-function options_to_array (options) {
-    if (!options) return false;
-    const arr = options.toLowerCase().replace(/\s+/,' ').split(/[;, ]/);
-    let len = arr.length;
-    while (len--) {
-        // Remove any empty elements
-        if (arr[len] === "" || arr[len] === null) {
-            arr.splice(len, 1);
+exports.load_dissallowed_extns = function () {
+    const plugin = this;
+
+    if (!plugin.cfg.main.disallowed_extensions) return;
+
+    if (!plugin.re) plugin.re = {};
+    plugin.re.bad_extn = new RegExp(
+        '\\.(?:' +
+                (plugin.cfg.main.disallowed_extensions
+                    .replace(/\s+/,' ')
+                    .split(/[;, ]/)
+                    .join('|')) +
+            ')$', 'i');
+}
+
+exports.load_n_compile_re = function (name, file) {
+    const plugin = this;
+    const valid_re = [];
+
+    const try_re = plugin.config.get(file, 'list', function () {
+        plugin.load_n_compile_re(name, file);
+    });
+
+    for (let r=0; r < try_re.length; r++) {
+        try {
+            const reg = new RegExp(try_re[r], 'i');
+            valid_re.push(reg);
         }
-        else {
-            arr[len] = arr[len].trim();
+        catch (e) {
+            this.logerror(`skipping invalid regexp: /${try_re[r]}/ (${e})`);
         }
     }
-    return (arr.length ? arr : false);
+
+    if (!plugin.re) plugin.re = {};
+    plugin.re[name] = valid_re;
+}
+
+exports.options_to_object = function (options) {
+    if (!options) return false;
+
+    const res = {};
+    options.toLowerCase().replace(/\s+/,' ').split(/[;, ]/).forEach((opt) => {
+        if (!opt) return;
+        res[opt.trim()]=true;
+    })
+
+    if (Object.keys(res).length) return res;
+    return false;
 }
 
 exports.unarchive_recursive = async function (connection, f, archive_file_name, cb) {
@@ -233,17 +289,12 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
         });
     }
 
-    function isArchive (file) {
-        const extn = path.extname(file.toLowerCase());
-        return plugin.archive_exts.includes(extn) || plugin.archive_exts.includes(extn.substring(1));
-    }
-
     async function processFile (in_file, prefix, file, depth) {
         let result = [(prefix ? `${prefix}/` : '') + file];
 
         connection.logdebug(plugin, `found file: ${prefix ? `${prefix}/` : ''}${file} depth=${depth}`);
 
-        if (!isArchive(file)) {
+        if (!plugin.isArchive(path.extname(file.toLowerCase()))) {
             return result;
         }
 
@@ -271,7 +322,7 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
             return result;
         }
 
-        if (depth >= plugin.archive_max_depth) {
+        if (depth >= plugin.cfg.archive.max_depth) {
             depthExceeded = true;
             connection.logdebug(plugin, `hit maximum depth with ${prefix ? `${prefix}/` : ''}${in_file}`);
             return result;
@@ -306,6 +357,13 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
     else {
         cb(null, files);
     }
+}
+
+exports.isArchive = function (file_ext) {
+    // check with and without the dot prefixed
+    if (this.cfg.archive.exts[file_ext]) return true;
+    if (file_ext[0] === '.' && this.cfg.archive.exts[file_ext.substring(1)]) return true;
+    return false;
 }
 
 exports.start_attachment = function (connection, ctype, filename, body, stream) {
@@ -362,10 +420,8 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
     connection.logdebug(plugin, `found attachment file: ${filename}`);
     // See if filename extension matches archive extension list
     // We check with the dot prefixed and without
-    if (archives_disabled || (!plugin.archive_exts.includes(fileext) &&
-        !plugin.archive_exts.includes(fileext.substring(1)))) {
-        return;
-    }
+    if (archives_disabled || !plugin.isArchive(fileext)) return;
+
     connection.logdebug(plugin, `found ${fileext} on archive list`);
     txn.notes.attachment_count++;
     stream.connection = connection;
@@ -458,24 +514,6 @@ exports.check_attachments = function (next, connection) {
     const txn = connection?.transaction;
     if (!txn) return next();
 
-    const ctype_config = this.config.get('attachment.ctype.regex','list');
-    const file_config = this.config.get('attachment.filename.regex','list');
-    const archive_config = this.config.get('attachment.archive.filename.regex','list');
-
-    // Add in any wildcard configuration
-    const ctype_wc = this.config.get('attachment.ctype.wc', 'list');
-    for (let i=0; i<ctype_wc.length; i++) {
-        ctype_config.push(utils.wildcard_to_regexp(ctype_wc[i]));
-    }
-    const file_wc = this.config.get('attachment.filename.wc', 'list');
-    for (let i=0; i<file_wc.length; i++) {
-        file_config.push(utils.wildcard_to_regexp(file_wc[i]));
-    }
-    const archive_wc = this.config.get('attachment.archive.filename.wc', 'list');
-    for (let i=0; i<archive_wc.length; i++) {
-        archive_config.push(utils.wildcard_to_regexp(archive_wc[i]));
-    }
-
     // Check for any stored errors from the attachment hooks
     if (txn.notes.attachment_result) {
         const result = txn.notes.attachment_result;
@@ -485,9 +523,10 @@ exports.check_attachments = function (next, connection) {
     const ctypes = txn.notes.attachment_ctypes;
 
     // Add in any content type from message body
+    const ct_re = /^([^/]+\/[^;\r\n ]+)/;
     const body = txn.body;
     let body_ct;
-    if (body && (body_ct = /^([^/]+\/[^;\r\n ]+)/.exec(body.header.get('content-type')))) {
+    if (body && (body_ct = ct_re.exec(body.header.get('content-type')))) {
         connection.logdebug(this, `found content type: ${body_ct[1]}`);
         ctypes.push(body_ct[1]);
     }
@@ -502,27 +541,32 @@ exports.check_attachments = function (next, connection) {
         }
     }
 
-    const ctypes_result = this.check_items_against_regexps(ctypes, ctype_config);
+    const bad_extn = this.disallowed_extensions(txn);
+    if (bad_extn) {
+        return next(DENY, `Message contains disallowed file extension (${bad_extn})`);
+    }
+
+    const ctypes_result = this.check_items_against_regexps(ctypes, this.re.ctype);
     if (ctypes_result) {
         connection.loginfo(this, `match ctype="${ctypes_result[0]}" regexp=/${ctypes_result[1]}/`);
         return next(DENY, `Message contains unacceptable content type (${ctypes_result[0]})`);
     }
 
     const files = txn.notes.attachment_files;
-    const files_result = this.check_items_against_regexps(files, file_config);
+    const files_result = this.check_items_against_regexps(files, this.re.file);
     if (files_result) {
         connection.loginfo(this, `match file="${files_result[0]}" regexp=/${files_result[1]}/`);
         return next(DENY, `Message contains unacceptable attachment (${files_result[0]})`);
     }
 
     const archive_files = txn.notes.attachment_archive_files;
-    const archives_result = this.check_items_against_regexps(archive_files, archive_config);
+    const archives_result = this.check_items_against_regexps(archive_files, this.re.archive);
     if (archives_result) {
         connection.loginfo(this, `match file="${archives_result[0]}" regexp=/${archives_result[1]}/`);
         return next(DENY, `Message contains unacceptable attachment (${archives_result[0]})`);
     }
 
-    return next();
+    next();
 }
 
 exports.check_items_against_regexps = function (items, regexps) {
