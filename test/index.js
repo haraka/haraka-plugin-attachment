@@ -1,8 +1,10 @@
 'use strict';
 
 const assert = require('assert')
+const fs     = require('fs')
+const path   = require('path');
+
 const fixtures = require('haraka-test-fixtures');
-const path = require('path');
 
 const attach = new fixtures.plugin('index');
 const Connection   = fixtures.connection;
@@ -52,6 +54,16 @@ describe('load_dissallowed_extns', function () {
     })
 })
 
+describe('file_extension', function () {
+    it('returns a file extension from a filename', function () {
+        assert.equal('ext', attach.file_extension('file.ext'));
+    })
+
+    it('returns empty string for no extension', function () {
+        assert.equal('', attach.file_extension('file'));
+    })
+})
+
 describe('disallowed_extensions', function () {
     it('blocks filename extensions in attachment_files', function (done) {
 
@@ -61,12 +73,11 @@ describe('disallowed_extensions', function () {
         const connection = fixtures.connection.createConnection();
         connection.init_transaction();
         const txn = connection.transaction;
-        txn.notes.attachment = {};
 
-        txn.notes.attachment.files = ['naughty.exe'];
+        txn.notes.attachment_files = ['naughty.exe'];
         assert.equal('exe', attach.disallowed_extensions(txn));
 
-        txn.notes.attachment.files = ['good.pdf', 'naughty.exe'];
+        txn.notes.attachment_files = ['good.pdf', 'naughty.exe'];
         assert.equal('exe', attach.disallowed_extensions(txn));
         done();
     })
@@ -81,13 +92,13 @@ describe('disallowed_extensions', function () {
         const txn = connection.transaction;
         txn.notes.attachment = {};
 
-        txn.notes.attachment.archive_files = ['icky.tnef'];
+        txn.notes.attachment_archive_files = ['icky.tnef'];
         assert.equal('tnef', attach.disallowed_extensions(txn));
 
-        txn.notes.attachment.archive_files = ['good.pdf', 'naughty.dll'];
+        txn.notes.attachment_archive_files = ['good.pdf', 'naughty.dll'];
         assert.equal('dll', attach.disallowed_extensions(txn));
 
-        txn.notes.attachment.archive_files = ['good.pdf', 'better.png'];
+        txn.notes.attachment_archive_files = ['good.pdf', 'better.png'];
         assert.equal(false, attach.disallowed_extensions(txn));
 
         done();
@@ -133,7 +144,7 @@ describe('isArchive', function () {
     })
 })
 
-describe('unarchive', function () {
+describe('unarchive_recursive', function () {
     beforeEach(_set_up)
 
     it('3layers', function (done) {

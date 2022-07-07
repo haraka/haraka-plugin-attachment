@@ -1,19 +1,21 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
 const { spawn } = require('child_process');
 const crypto = require('crypto');
 
 let tmp;
 let archives_disabled = false;
 
+exports.re = {
+    ct: /^([^/]+\/[^;\r\n ]+)/,    // content type
+}
+
 exports.register = function () {
 
     this.load_tmp_module();
     this.load_attachment_ini();
-
-    this.re = { ct: /^([^/]+\/[^;\r\n ]+)/ } // content type
 
     this.load_n_compile_re('file',    'attachment.filename.regex');
     this.load_n_compile_re('ctype',   'attachment.ctype.regex');
@@ -52,14 +54,14 @@ exports.load_attachment_ini = function () {
                 plugin.cfg.main.archive_extns :
                 'zip tar tgz taz z gz rar 7z';
 
-    const maxd = (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
-        plugin.cfg.archive.max_depth :           // new
-        plugin.cfg.main.archive_max_depth ?      // old
-            plugin.cfg.main.archive_max_depth :
-            5;
-
-    if (!plugin.cfg.archive.max_depth && maxd) plugin.cfg.archive.max_depth = maxd;
     plugin.cfg.archive.exts = this.options_to_object(extns)
+
+    plugin.cfg.archive.max_depth =
+        (plugin.cfg.archive && plugin.cfg.archive.max_depth) ?
+            plugin.cfg.archive.max_depth :           // new
+            plugin.cfg.main.archive_max_depth ?      // old
+                plugin.cfg.main.archive_max_depth :
+                5;
 }
 
 exports.find_bsdtar_path = cb => {
@@ -360,7 +362,6 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
 exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) {
     const plugin = this;
     const md5 = crypto.createHash('md5');
-    let digest;
     let bytes = 0;
 
     stream.on('data', (data) => {
@@ -369,16 +370,27 @@ exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) 
     })
 
     stream.once('end', () => {
-        digest = md5.digest('hex');
-        const ca = ctype.match(/^(.*)?;\s+name="(.*)?"/);
-        connection.transaction.results.push(plugin, { attach:
-            {
+        stream.pause();
+
+        const digest = md5.digest('hex') || '';
+        const ct = plugin.content_type(connection, ctype)
+
+        connection.transaction.notes.attachments.push({
+            ctype: ct,
+            filename,
+            extension: plugin.file_extension(filename),
+            md5: digest,
+        });
+
+        connection.transaction.results.push(plugin, {
+            attach: {
                 file: filename,
-                ctype: (ca && ca[2] === filename) ? ca[1] : ctype,
+                ctype: ct,
                 md5: digest,
                 bytes,
             },
-        });
+            emit: true,
+        })
         connection.loginfo(plugin, `file="${filename}" ctype="${ctype}" md5=${digest} bytes=${bytes}`);
     })
 }
@@ -411,6 +423,7 @@ exports.isArchive = function (file_ext) {
 }
 
 exports.start_attachment = function (connection, ctype, filename, body, stream) {
+
     const plugin = this;
     const txn = connection?.transaction;
 
@@ -420,47 +433,22 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
         }
     }
 
-    plugin.compute_and_log_md5sum(connection, ctype, filename, stream);
+    let file_ext = '.unknown'
 
-    const ct       = plugin.content_type(connection, ctype);
-    const file_ext = plugin.file_extension(filename);
-
-    // Parse filename
-    const fileext = file_ext || '.unknown';
     if (filename) {
+        file_ext = plugin.file_extension(filename);
         txn.notes.attachment_files.push(filename);
     }
 
-    // Calculate and report the md5 of each attachment
-    const md5 = crypto.createHash('md5');
-    let digest;
-    let bytes = 0;
-
-    stream.on('data', (data) => {
-        md5.update(data);
-        bytes += data.length;
-    });
-
-    stream.once('end', () => {
-        stream.pause();
-
-        digest = md5.digest('hex');
-        connection.loginfo(plugin, `file="${filename}" ctype="${ctype}" md5=${digest} bytes=${bytes}`);
-        txn.notes.attachments.push({
-            ctype: ct,
-            filename: (filename ? filename : ''),
-            extension: file_ext,
-            md5: ((digest) ? digest : ''),
-        });
-    });
+    plugin.compute_and_log_md5sum(connection, ctype, filename, stream);
 
     if (!filename) return;
 
     connection.logdebug(plugin, `found attachment file: ${filename}`);
     // See if filename extension matches archive extension list
-    if (archives_disabled || !plugin.isArchive(fileext)) return;
+    if (archives_disabled || !plugin.isArchive(file_ext)) return;
 
-    connection.logdebug(plugin, `found ${fileext} on archive list`);
+    connection.logdebug(plugin, `found ${file_ext} on archive list`);
     txn.notes.attachment_count++;
 
     stream.connection = connection;
@@ -547,7 +535,7 @@ exports.hook_data = function (next, connection) {
     txn.attachment_hooks((ctype, filename, body, stream) => {
         plugin.start_attachment(connection, ctype, filename, body, stream);
     });
-    return next();
+    next();
 }
 
 exports.disallowed_extensions = function (txn) {
@@ -555,12 +543,12 @@ exports.disallowed_extensions = function (txn) {
     if (!plugin.re.bad_extn) return false;
 
     let bad = false;
-    [ txn.notes.attachment.files, txn.notes.attachment.archive_files ].forEach(items => {
+    [ txn.notes.attachment_files, txn.notes.attachment_archive_files ].forEach(items => {
         if (bad) return;
         if (!items || !Array.isArray(items)) return;
-        for (let i=0; i < items.length; i++) {
-            if (!plugin.re.bad_extn.test(items[i])) continue;
-            bad = items[i].split('.').slice(0).pop();
+        for (const extn of items) {
+            if (!plugin.re.bad_extn.test(extn)) continue;
+            bad = extn.split('.').slice(0).pop();
             break;
         }
     })
