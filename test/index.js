@@ -23,7 +23,7 @@ function _set_up (done) {
 
     this.directory = path.resolve(__dirname, 'fixtures');
 
-    // we need find bsdtar
+    // finds bsdtar
     this.plugin.register();
     this.plugin.hook_init_master(done);
 }
@@ -243,5 +243,34 @@ describe('unarchive_recursive', function () {
             assert.equal(files.length, 0);
             done()
         });
+    })
+})
+
+describe('start_attachment', function () {
+    beforeEach(_set_up)
+
+    it('finds an message attachment', function (done) {
+        // const pi = this.plugin
+        const txn = this.connection.transaction
+
+        this.plugin.hook_data(function () {
+
+            // console.log(pi)
+            const msgPath = path.join(__dirname, 'fixtures', 'haraka-icon-attach.eml')
+            // console.log(`msgPath: ${msgPath}`)
+            const specimen = fs.readFileSync(msgPath, 'utf8');
+
+            for (const line of specimen.split(/\r?\n/g)) {
+                txn.add_data(`${line}\r\n`);
+            }
+
+            txn.end_data();
+            txn.ensure_body()
+
+            // console.dir(txn.message_stream)
+            assert.deepEqual(txn.message_stream.idx['Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'], { start: 5232, end: 6384 })
+            done()
+        },
+        this.connection)
     })
 })
