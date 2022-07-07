@@ -7,7 +7,6 @@ const path   = require('path');
 const fixtures = require('haraka-test-fixtures');
 
 const attach = new fixtures.plugin('index');
-const Connection   = fixtures.connection;
 
 function _set_up (done) {
 
@@ -15,7 +14,7 @@ function _set_up (done) {
     this.plugin.cfg = {};
     this.plugin.cfg.timeout = 10;
 
-    this.connection = Connection.createConnection();
+    this.connection = fixtures.connection.createConnection()
     this.connection.init_transaction();
 
     this.connection.logdebug = function (where, message) { if (process.env.DEBUG) console.log(message); };
