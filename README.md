@@ -2,10 +2,8 @@ attachment
 ==========
 
 [![Build Status][ci-img]][ci-url]
-[![Windows Build Status][ci-win-img]][ci-win-url]
 [![Code Climate][clim-img]][clim-url]
 [![NPM][npm-img]][npm-url]
-<!-- doesn't work in haraka plugins... yet. [![Code Coverage][cov-img]][cov-url]-->
 
 This plugin allows you to reject messages based on Content-Type within the message or any MIME parts or on the filename of any attachments.
 
@@ -82,12 +80,8 @@ Configuration
 
 
 <!-- leave these buried at the bottom of the document -->
-[ci-img]: https://travis-ci.org/haraka/haraka-plugin-attachment.svg
-[ci-url]: https://travis-ci.org/haraka/haraka-plugin-attachment
-[ci-win-img]: https://ci.appveyor.com/api/projects/status/u33k3jsuymtaqtfq?svg=true
-[ci-win-url]: https://ci.appveyor.com/project/msimerson/haraka-plugin-attachment
-[cov-img]: https://codecov.io/github/haraka/haraka-plugin-attachment/coverage.svg
-[cov-url]: https://codecov.io/github/haraka/haraka-plugin-attachment
+[ci-img]: https://github.com/haraka/haraka-plugin-attachment/actions/workflows/ci.yml/badge.svg
+[ci-url]: https://github.com/haraka/haraka-plugin-attachment/actions/workflows/ci.yml
 [clim-img]: https://codeclimate.com/github/haraka/haraka-plugin-attachment/badges/gpa.svg
 [clim-url]: https://codeclimate.com/github/haraka/haraka-plugin-attachment
 [npm-img]: https://nodei.co/npm/haraka-plugin-attachment.png

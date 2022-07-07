@@ -1,4 +1,22 @@
 
+### Unreleased
+
+
+### [1.0.7] - 2022-06-16
+
+#### Added
+
+- 
+
+#### Fixed
+
+- 
+
+#### Changed
+
+- import fresh from Haraka
+- convert tests to mocha
+
 
 ### 1.0.6 - Dec 22, 2021
 
@@ -19,3 +37,6 @@
 - finished converting tests to mocha, tests work again. Yay.
 - es6 updates
 - backported changes from haraka/plugins/attachment.js
+
+
+[1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/1.0.7

@@ -1,0 +1,86 @@
+Delivered-To: haraka.mail@gmail.com
+Received: by 2002:ab3:6f8e:0:0:0:0:0 with SMTP id d14csp1994692ltq;
+        Thu, 16 Jun 2022 22:39:28 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJw16YN9P7Vs8oIiHL7G+DNj0rd/RFuy9/l/Wicmod36VZVTS/puw3+7DlWo8U7IluNFgj44
+X-Received: by 2002:a05:6808:3082:b0:32f:14df:d56 with SMTP id bl2-20020a056808308200b0032f14df0d56mr9453315oib.36.1655444367728;
+        Thu, 16 Jun 2022 22:39:27 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1655444367; cv=none;
+        d=google.com; s=arc-20160816;
+        b=kLGjp2ljdxPlDesfsMC9ePo3qqq6iTFoUk5OnGmOCoJROlsh9ughdJ/zDYEQDloorv
+         srZUVv8qtkQ6viejNdG4ZAOdQHfPBzVJQnwa5EJOcLv1uHRESDzWEBNVYpkgY6vxASe9
+         voQh0bbnCfyJ3t1zS2T8YwAi3CUJjIAxnh74rM4T0ifiExrijJ3CsByYbW2EdicE7OCu
+         5PMShKrEej1e14ERnAiQDPt8vPRI6ajDm0fvTUKZ0EeeXsMToOZIOJvwE5mYrWfBY/Lg
+         WR5eneLbfFFndqnme67Tk0oqXEfR4xqaWaKJmNWwpQp5Oxnfam/h0WHGRedFwA/4Q6tB
+         Tx/Q==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20160816;
+        h=dkim-signature:to:date:message-id:subject:mime-version:from;
+        bh=RYNKaQ8pV1V8ZzGHBBOfhMiozhScoqKiZgquGlE1Jfk=;
+        b=S2vxlxDMWnM5gzsQ2NC+MwF2QSijWMBjAgMwqGjWJhEOhN3TkmdNE5QMV83mDwJvPG
+         EybtmIxuSw9fFzBBlR52bq9z0LKXKq+GTmQEk8AqorsC1DiHalPxeSf9zpFCm8Fmtc8c
+         BR/Lr7cAzTWoxa23bNe+YVc/98ph3uS6FkayA+NAbrDuYscpNfFkajZnVbulzL5XxE/O
+         UtEAnyXaQAi3v5Kk2WqxewarYCvhUVREhWlOJwV4+4KF1a7XR2Loig4L8hvqgEb6ZXwW
+         dpnRwIMBWDOns4EH8kMhmTpWIyAJiIjLAzYkIFo+gA3XEWhVXuIfFRsZQ3onDKvohJWy
+         q56w==
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@tnpi.net header.s=mar2013 header.b=TkkvpKMK;
+       spf=pass (google.com: domain of matt@tnpi.net designates 66.128.51.165 as permitted sender) smtp.mailfrom=matt@tnpi.net;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=tnpi.net
+Return-Path: <matt@tnpi.net>
+Received: from mail.theartfarm.com (mail.theartfarm.com. [66.128.51.165])
+        by mx.google.com with ESMTPS id i6-20020a9d1706000000b0060c4e96a70fsi3484305ota.173.2022.06.16.22.39.26
+        for <haraka.mail@gmail.com>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
+        Thu, 16 Jun 2022 22:39:27 -0700 (PDT)
+Received-SPF: pass (google.com: domain of matt@tnpi.net designates 66.128.51.165 as permitted sender) client-ip=66.128.51.165;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@tnpi.net header.s=mar2013 header.b=TkkvpKMK;
+       spf=pass (google.com: domain of matt@tnpi.net designates 66.128.51.165 as permitted sender) smtp.mailfrom=matt@tnpi.net;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=tnpi.net
+Received: (Haraka outbound); Thu, 16 Jun 2022 20:39:25 -0900
+Authentication-Results: mail.theartfarm.com; auth=pass (plain); spf=pass smtp.mailfrom=tnpi.net
+Received-SPF: Pass (mail.theartfarm.com: domain of tnpi.net designates 2602:47:d497:1a00:95df:28b7:e166:b8f3 as permitted sender) receiver=mail.theartfarm.com; identity=mailfrom; client-ip=66.128.51.165 helo=smtpclient.apple; envelope-from=<matt@tnpi.net>
+Received-SPF: None (mail.theartfarm.com: domain of smtpclient.apple does not designate 2602:47:d497:1a00:95df:28b7:e166:b8f3 as permitted sender) receiver=mail.theartfarm.com; identity=helo; client-ip=2602:47:d497:1a00:95df:28b7:e166:b8f3 helo=smtpclient.apple; envelope-from=<matt@tnpi.net>
+Received: from smtpclient.apple ([2602:47:d497:1a00:95df:28b7:e166:b8f3]) by mail.theartfarm.com (Haraka/2.8.28) with ESMTPSA id 87C954DA-1B27-441F-9C4B-589EDAF586B1.1 envelope-from <matt@tnpi.net> tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (authenticated bits=0); Thu, 16 Jun 2022 20:39:25 -0900
+From: Matt Simerson <matt@tnpi.net>
+Content-Type: multipart/alternative; boundary="Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7"
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3696.100.31\))
+Subject: sample email w/attachment
+Message-Id: <CAFA4DF5-49AD-4FEB-A5D5-2AC114652C07@tnpi.net>
+Date: Thu, 16 Jun 2022 22:39:20 -0700
+To: haraka.mail@gmail.com
+X-Mailer: Apple Mail (2.3696.100.31)
+X-Spam-Status: No, score=-0.8 required=5.0 autolearn=no autolearn_force=no
+X-Spam-DCC: : dcc 1102; Body=1 Fuz1=1
+X-Spam-Checker-Version: SpamAssassin 3.4.5 (2021-03-20) on spamassassin
+X-Spam-Tests: ALL_TRUSTED,BAYES_00,HTML_IMAGE_ONLY_04,HTML_MESSAGE, MIME_HTML_MOSTLY,MPART_ALT_DIFF,SPF_HELO_NONE,SPF_PASS,TVD_SPACE_RATIO
+X-Haraka-Karma: score: 22, good: 7, connections: 7, history: 7, awards: 162,182, pass:relaying
+X-Haraka-ASN: 209
+X-Haraka-ASN-Org: CENTURYLINK-US-LEGACY-QWEST
+X-Haraka-GeoIP: NA, US, FL, Ocala, 1428km
+X-Haraka-GeoIP-Received: 2602:47:d497:1a00:95df:28b7:e166:b8f3:US
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tnpi.net; s=mar2013; h=from:subject:date:message-id:to:mime-version; bh=o+lGZj+WlxYYl3NX8ghSTkSEvNbeSTpPdNdeEllwQmA=; b=TkkvpKMKj1LdTEUp3K3s/ZdAVzv3ao1EDubkcSkRRdpSCxXIyRJLDEpTuvqHWyKZ0nrkG3pCdf XClyHXvKRRplRpLIKRMC6HXg32awG4c37fMdhrzBEV9P1W0dsdZPrdODWBo/UXuKjHhHxhn8ASzG kr0i/iPSxKkbEHcb+RibaBletQjXh1ULLBMjP0wuOxsxG5hRh61UFvGFlAVkXLYyC0N1dt+emDoO nkl7Y5k4tLsuRSWDWMnwqvggJztjcRXZq8fx4Pt2XOLPRbF60hSI+H8WW0JnMSkg+NE/wy5Fzmy7 ersTykFjVG6JuhGCD8g7CSyF8VY3ffNdUaE/vnAg==
+
+--Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+
+
+
+
+--Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7
+Content-Type: multipart/related; type="text/html"; boundary="Apple-Mail=_E112021D-E491-4E1D-8526-77623DD2EBE1"
+
+--Apple-Mail=_E112021D-E491-4E1D-8526-77623DD2EBE1
+Content-Transfer-Encoding: 7bit
+Content-Type: text/html; charset=us-ascii
+
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=us-ascii"></head><body style="word-wrap: break-word; -webkit-nbsp-mode: space; line-break: after-white-space;"><img apple-inline="yes" id="04AEC061-FE6F-4CA7-8109-B659E093F646" src="cid:F3C4CEC5-6AC0-49A8-ADEC-6C668BB68C0A" class=""><div class=""><br class=""></div></body></html>
+--Apple-Mail=_E112021D-E491-4E1D-8526-77623DD2EBE1
+Content-Transfer-Encoding: base64
+Content-Disposition: inline; filename=1111229.png
+Content-Type: image/png; x-unix-mode=0644; name="1111229.png"
+Content-Id: <F3C4CEC5-6AC0-49A8-ADEC-6C668BB68C0A>
+
+
+--Apple-Mail=_E112021D-E491-4E1D-8526-77623DD2EBE1--
+--Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7--
