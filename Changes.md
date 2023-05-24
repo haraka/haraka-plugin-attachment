@@ -4,14 +4,6 @@
 
 ### [1.0.7] - 2022-06-16
 
-#### Added
-
-- 
-
-#### Fixed
-
-- 
-
 #### Changed
 
 - import fresh from Haraka
