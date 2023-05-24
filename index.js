@@ -62,6 +62,8 @@ exports.load_attachment_ini = function () {
             plugin.cfg.main.archive_max_depth ?      // old
                 plugin.cfg.main.archive_max_depth :
                 5;
+
+    plugin.load_dissallowed_extns();
 }
 
 exports.find_bsdtar_path = cb => {
