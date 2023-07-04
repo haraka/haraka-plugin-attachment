@@ -412,7 +412,7 @@ exports.content_type = function (connection, ctype) {
     const ct_match = ctype.match(plugin.re.ct);
     if (!ct_match || !ct_match[1]) return 'unknown/unknown';
 
-    connection.logdebug(plugin, `found content type: ct_match[1]`);
+    connection.logdebug(plugin, `found content type: ${ct_match[1]}`);
     connection.transaction.notes.attachment_ctypes.push(ct_match[1]);
     return ct_match[1].toLowerCase();
 }
