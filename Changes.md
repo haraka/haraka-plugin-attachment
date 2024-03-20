@@ -2,9 +2,14 @@
 ### Unreleased
 
 
-### [1.0.7] - 2022-06-16
+### [1.1.0] - 2024-03-20
 
-#### Changed
+- chore: bump version deps, and pin them
+- fix: minor debug logging issue #32
+- fix: restored missing function call #31
+
+
+### [1.0.7] - 2022-06-16
 
 - import fresh from Haraka
 - convert tests to mocha
@@ -32,3 +37,4 @@
 
 
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/1.0.7
+[1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/1.1.0
