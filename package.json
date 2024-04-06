@@ -22,7 +22,7 @@
   "dependencies": {
     "tmp": "0.2.3",
     "haraka-constants": "1.0.6",
-    "haraka-utils": "1.0.3"
+    "haraka-utils": "1.1.1"
   },
   "optionalDependencies": {},
   "devDependencies": {
