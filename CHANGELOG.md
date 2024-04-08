@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - populate `[files]` in package.json. Delete .npmignore.
 - doc: Changes -> CHANGELOG
 - doc(CHANGELOG): fixed broken release link
+- prettier
 
 ### [1.1.0] - 2024-03-20
 
