@@ -10,7 +10,7 @@
     "url": "git@github.com:haraka/haraka-plugin-attachment.git"
   },
   "main": "index.js",
-  "files": [],
+  "files": ["CHANGELOG.md", "config"],
   "engines": {
     "node": ">= 12"
   },

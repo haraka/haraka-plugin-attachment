@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### [1.1.1] - 2024-04-08
 
 - 
+- populate `[files]` in package.json. Delete .npmignore.
+- doc: Changes -> CHANGELOG
 - doc(CHANGELOG): fixed broken release link
 
 ### [1.1.0] - 2024-03-20
