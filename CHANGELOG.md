@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [1.1.2] - 2024-04-11
 
-- 
+-
 - doc: add CONTRIBUTORS
 
 ### [1.1.1] - 2024-04-08
