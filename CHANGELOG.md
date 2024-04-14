@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.1.2] - 2024-04-11
+
+- deps: add ^ to required versions
+- doc: add CONTRIBUTORS
+
 ### [1.1.1] - 2024-04-08
 
 - dep: eslint-plugin-haraka -> @haraka/eslint-config
@@ -44,5 +49,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 [1.0.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.6
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.7
-[1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.0
+[1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/1.1.0
 [1.1.1]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.1
+[1.1.2]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.2
