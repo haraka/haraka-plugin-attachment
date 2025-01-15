@@ -28,7 +28,7 @@ exports.load_tmp_module = function () {
   try {
     tmp = require('tmp');
     tmp.setGracefulCleanup();
-  } catch (e) {
+  } catch (ignore) {
     archives_disabled = true;
     this.logwarn(
       `the 'tmp' module is required to extract filenames from archives`,
