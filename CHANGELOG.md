@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.1.3] - 2025-01-15
+
+- deps(eslint): upgrade to v9
+- deps(all): bump to latest
+
 ### [1.1.2] - 2024-04-11
 
 - deps: add ^ to required versions
@@ -52,3 +57,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/1.1.0
 [1.1.1]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.1
 [1.1.2]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.2
+[1.1.3]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.3
