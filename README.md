@@ -1,8 +1,7 @@
-# attachment
+# haraka-plugin-attachment
 
 [![Build Status][ci-img]][ci-url]
 [![Code Climate][clim-img]][clim-url]
-[![NPM][npm-img]][npm-url]
 
 This plugin allows you to reject messages based on Content-Type within the message or any MIME parts or on the filename of any attachments.
 
@@ -77,5 +76,3 @@ At INFO level logging this plugin will output the filename and type of each atta
 [ci-url]: https://github.com/haraka/haraka-plugin-attachment/actions/workflows/ci.yml
 [clim-img]: https://codeclimate.com/github/haraka/haraka-plugin-attachment/badges/gpa.svg
 [clim-url]: https://codeclimate.com/github/haraka/haraka-plugin-attachment
-[npm-img]: https://nodei.co/npm/haraka-plugin-attachment.png
-[npm-url]: https://www.npmjs.com/package/haraka-plugin-attachment
