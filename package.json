@@ -42,7 +42,6 @@
     "url": "https://github.com/haraka/haraka-plugin-attachment/issues"
   },
   "prettier": {
-    "singleQuote": true,
-    "semi": false
+    "singleQuote": true
   }
 }
