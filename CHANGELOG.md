@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.1.4] - 2025-01-26
+
+- prettier: move config into package.json
+
 ### [1.1.3] - 2025-01-15
 
 - deps(eslint): upgrade to v9
@@ -58,3 +62,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.1]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.1
 [1.1.2]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.2
 [1.1.3]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.3
+[1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
