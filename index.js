@@ -547,9 +547,9 @@ exports.start_attachment = function (
       plugin.unarchive_recursive(connection, fn, filename, (error, files) => {
         txn.notes.attachment_count--;
         cleanup();
-        if (err) {
+        if (error) {
           connection.logerror(plugin, error.message);
-          if (err.message === 'maximum archive depth exceeded') {
+          if (error.message === 'maximum archive depth exceeded') {
             txn.notes.attachment_result = [
               DENY,
               'Message contains nested archives exceeding the maximum depth',
