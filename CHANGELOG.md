@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.1.5] - 2025-04-02
+
+- fix: typo prevented unarchive zip from throwing errors #42
+
 ### [1.1.4] - 2025-01-26
 
 - prettier: move config into package.json
@@ -58,8 +62,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 [1.0.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.6
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.7
-[1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/1.1.0
+[1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.0
 [1.1.1]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.1
 [1.1.2]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.2
 [1.1.3]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.3
 [1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
+[1.1.5]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.5
