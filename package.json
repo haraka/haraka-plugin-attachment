@@ -23,7 +23,7 @@
     "lint:fix": "npx eslint *.js test --fix",
     "prettier": "npx prettier . --check",
     "prettier:fix": "npx prettier . --write --log-level=warn",
-    "test": "npx mocha@11 --exit",
+    "test": "npx mocha --exit",
     "versions": "npx @msimerson/dependency-version-checker check",
     "versions:fix": "npx @msimerson/dependency-version-checker update && npm run prettier:fix"
   },
