@@ -67,7 +67,7 @@ describe('file_extension', function () {
 });
 
 describe('disallowed_extensions', function () {
-  it('blocks filename extensions in attachment_files', function (done) {
+  it('blocks filename extensions in attachment_files', function () {
     attach.cfg = { main: { disallowed_extensions: 'exe;scr' } };
     attach.load_dissallowed_extns();
 
@@ -80,10 +80,9 @@ describe('disallowed_extensions', function () {
 
     txn.notes.attachment_files = ['good.pdf', 'naughty.exe'];
     assert.equal('exe', attach.disallowed_extensions(txn));
-    done();
   });
 
-  it('blocks filename extensions in archive_files', function (done) {
+  it('blocks filename extensions in archive_files', function () {
     attach.cfg = { main: { disallowed_extensions: 'dll tnef' } };
     attach.load_dissallowed_extns();
 
@@ -100,8 +99,6 @@ describe('disallowed_extensions', function () {
 
     txn.notes.attachment_archive_files = ['good.pdf', 'better.png'];
     assert.equal(false, attach.disallowed_extensions(txn));
-
-    done();
   });
 });
 
@@ -159,187 +156,207 @@ describe('isArchive', function () {
 describe('unarchive_recursive', function () {
   beforeEach(_set_up);
 
-  it('3layers', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/3layer.zip`,
-      '3layer.zip',
-      (e, files) => {
-        assert.equal(e, null);
-        assert.equal(files.length, 3);
-
-        done();
-      },
-    );
+  it('3layers', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/3layer.zip`,
+        '3layer.zip',
+        (e, files) => {
+          assert.equal(e, null);
+          assert.equal(files.length, 3);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('empty.gz', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/empty.gz`,
-      'empty.gz',
-      (e, files) => {
-        assert.equal(e, null);
-        assert.equal(files.length, 0);
-        done();
-      },
-    );
+  it('empty.gz', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/empty.gz`,
+        'empty.gz',
+        (e, files) => {
+          assert.equal(e, null);
+          assert.equal(files.length, 0);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('encrypt.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/encrypt.zip`,
-      'encrypt.zip',
-      (e, files) => {
-        // we see files list in encrypted zip, but we can't extract so no error here
-        assert.equal(e, null);
-        assert.equal(files?.length, 1);
-        done();
-      },
-    );
+  it('encrypt.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/encrypt.zip`,
+        'encrypt.zip',
+        (e, files) => {
+          // we see files list in encrypted zip, but we can't extract so no error here
+          assert.equal(e, null);
+          assert.equal(files?.length, 1);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('encrypt-recursive.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/encrypt-recursive.zip`,
-      'encrypt-recursive.zip',
-      (e, files) => {
-        // we can't extract encrypted file in encrypted zip so error here
-        assert.equal(true, e.message.includes('encrypted'));
-        assert.equal(files.length, 1);
-        done();
-      },
-    );
+  it('encrypt-recursive.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/encrypt-recursive.zip`,
+        'encrypt-recursive.zip',
+        (e, files) => {
+          // we can't extract encrypted file in encrypted zip so error here
+          assert.equal(true, e.message.includes('encrypted'));
+          assert.equal(files.length, 1);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('gz-in-zip.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/gz-in-zip.zip`,
-      'gz-in-zip.zip',
-      (e, files) => {
-        // gz is not listable in bsdtar
-        assert.equal(e, null);
-        assert.equal(files.length, 1);
-        done();
-      },
-    );
+  it('gz-in-zip.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/gz-in-zip.zip`,
+        'gz-in-zip.zip',
+        (e, files) => {
+          // gz is not listable in bsdtar
+          assert.equal(e, null);
+          assert.equal(files.length, 1);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('invalid.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/invalid.zip`,
-      'invalid.zip',
-      (e, files) => {
-        // invalid zip is assumed to be just file, so error of bsdtar is ignored
-        assert.equal(e, null);
-        assert.equal(files.length, 0);
-        done();
-      },
-    );
+  it('invalid.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/invalid.zip`,
+        'invalid.zip',
+        (e, files) => {
+          // invalid zip is assumed to be just file, so error of bsdtar is ignored
+          assert.equal(e, null);
+          assert.equal(files.length, 0);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('invalid-in-valid.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/invalid-in-valid.zip`,
-      'invalid-in-valid.zip',
-      (e, files) => {
-        assert.equal(e, null);
-        assert.equal(files.length, 1);
-        done();
-      },
-    );
+  it('invalid-in-valid.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/invalid-in-valid.zip`,
+        'invalid-in-valid.zip',
+        (e, files) => {
+          assert.equal(e, null);
+          assert.equal(files.length, 1);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('password.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/password.zip`,
-      'password.zip',
-      (e, files) => {
-        // we see files list in encrypted zip, but we can't extract so no error here
-        assert.equal(e, null);
-        assert.equal(files.length, 1);
-        done();
-      },
-    );
+  it('password.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/password.zip`,
+        'password.zip',
+        (e, files) => {
+          // we see files list in encrypted zip, but we can't extract so no error here
+          assert.equal(e, null);
+          assert.equal(files.length, 1);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('valid.zip', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/valid.zip`,
-      'valid.zip',
-      (e, files) => {
-        assert.equal(e, null);
-        assert.equal(files.length, 1);
-        done();
-      },
-    );
+  it('valid.zip', async function () {
+    if (!this.plugin.bsdtar_path) return;
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/valid.zip`,
+        'valid.zip',
+        (e, files) => {
+          assert.equal(e, null);
+          assert.equal(files.length, 1);
+          resolve();
+        },
+      );
+    });
   });
 
-  it('timeout', function (done) {
-    if (!this.plugin.bsdtar_path) return done();
+  it('timeout', async function () {
+    if (!this.plugin.bsdtar_path) return;
     this.plugin.cfg.timeout = 0;
-    this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/encrypt-recursive.zip`,
-      'encrypt-recursive.zip',
-      (e, files) => {
-        assert.ok(true, e.message.includes('timeout'));
-        assert.equal(files.length, 0);
-        done();
-      },
-    );
+    await new Promise((resolve) => {
+      this.plugin.unarchive_recursive(
+        this.connection,
+        `${this.directory}/encrypt-recursive.zip`,
+        'encrypt-recursive.zip',
+        (e, files) => {
+          assert.ok(true, e.message.includes('timeout'));
+          assert.equal(files.length, 0);
+          resolve();
+        },
+      );
+    });
   });
 });
 
 describe('start_attachment', function () {
   beforeEach(_set_up);
 
-  it('finds an message attachment', function (done) {
+  it('finds an message attachment', async function () {
     // const pi = this.plugin
     const txn = this.connection.transaction;
 
-    this.plugin.hook_data(function () {
-      // console.log(pi)
-      const msgPath = path.join(
-        __dirname,
-        'fixtures',
-        'haraka-icon-attach.eml',
-      );
-      // console.log(`msgPath: ${msgPath}`)
-      const specimen = fs.readFileSync(msgPath, 'utf8');
+    await new Promise((resolve) => {
+      this.plugin.hook_data(function () {
+        // console.log(pi)
+        const msgPath = path.join(
+          __dirname,
+          'fixtures',
+          'haraka-icon-attach.eml',
+        );
+        // console.log(`msgPath: ${msgPath}`)
+        const specimen = fs.readFileSync(msgPath, 'utf8');
 
-      for (const line of specimen.split(/\r?\n/g)) {
-        txn.add_data(`${line}\r\n`);
-      }
+        for (const line of specimen.split(/\r?\n/g)) {
+          txn.add_data(`${line}\r\n`);
+        }
 
-      txn.end_data();
-      txn.ensure_body();
+        txn.end_data();
+        txn.ensure_body();
 
-      // console.dir(txn.message_stream)
-      assert.deepEqual(
-        txn.message_stream.idx[
-          'Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'
-        ],
-        { start: 5232, end: 6384 },
-      );
-      done();
-    }, this.connection);
+        // console.dir(txn.message_stream)
+        assert.deepEqual(
+          txn.message_stream.idx[
+            'Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'
+          ],
+          { start: 5232, end: 6384 },
+        );
+        resolve();
+      }, this.connection);
+    });
   });
 });
