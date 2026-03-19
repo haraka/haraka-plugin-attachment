@@ -45,9 +45,9 @@ describe('internal helper functions', function () {
     const out = await plugin.timedOutSpawn(
       plugin,
       connection,
-      '/bin/echo',
-      ['hello'],
-      { cwd: '/', env: process.env },
+      process.execPath,
+      ['-e', 'console.log("hello")'],
+      { cwd: process.cwd(), env: process.env },
       null,
       ctx,
     )
@@ -60,9 +60,9 @@ describe('internal helper functions', function () {
       await plugin.timedOutSpawn(
         plugin,
         connection,
-        '/bin/sleep',
-        ['1'],
-        { cwd: '/', env: process.env },
+        process.execPath,
+        ['-e', 'setTimeout(() => {}, 1000)'],
+        { cwd: process.cwd(), env: process.env },
         null,
         ctx2,
       )
