@@ -1,9 +1,9 @@
 'use strict'
 
-const fs = require('fs')
-const path = require('path')
-const { spawn } = require('child_process')
-const crypto = require('crypto')
+const fs = require('node:fs')
+const path = require('node:path')
+const { spawn } = require('node:child_process')
+const crypto = require('node:crypto')
 
 let tmp
 let archives_disabled = false
@@ -35,32 +35,30 @@ exports.load_tmp_module = function () {
 }
 
 exports.load_attachment_ini = function () {
-  const plugin = this
-
-  plugin.cfg = plugin.config.get('attachment.ini', () => {
-    plugin.load_attachment_ini()
+  this.cfg = this.config.get('attachment.ini', () => {
+    this.load_attachment_ini()
   })
 
-  plugin.cfg.timeout = (plugin.cfg.main.timeout || 30) * 1000
+  this.cfg.timeout = (this.cfg.main.timeout || 30) * 1000
 
   // repair a mismatch between legacy docs and code
-  const extns = plugin.cfg.archive?.extensions
-    ? plugin.cfg.archive.extensions // new
-    : plugin.cfg.main.archive_extensions // old code
-      ? plugin.cfg.main.archive_extensions
-      : plugin.cfg.main.archive_extns // old docs
-        ? plugin.cfg.main.archive_extns
+  const extns = this.cfg.archive?.extensions
+    ? this.cfg.archive.extensions // new
+    : this.cfg.main.archive_extensions // old code
+      ? this.cfg.main.archive_extensions
+      : this.cfg.main.archive_extns // old docs
+        ? this.cfg.main.archive_extns
         : 'zip tar tgz taz z gz rar 7z'
 
-  plugin.cfg.archive.exts = this.options_to_object(extns)
+  this.cfg.archive.exts = this.options_to_object(extns)
 
-  plugin.cfg.archive.max_depth = plugin.cfg.archive?.max_depth
-    ? plugin.cfg.archive.max_depth // new
-    : plugin.cfg.main.archive_max_depth // old
-      ? plugin.cfg.main.archive_max_depth
+  this.cfg.archive.max_depth = this.cfg.archive?.max_depth
+    ? this.cfg.archive.max_depth // new
+    : this.cfg.main.archive_max_depth // old
+      ? this.cfg.main.archive_max_depth
       : 5
 
-  plugin.load_disallowed_extns()
+  this.load_disallowed_extns()
 }
 
 exports.find_bsdtar_path = (cb) => {
@@ -104,7 +102,7 @@ exports.load_disallowed_extns = function () {
   if (!this.cfg.main.disallowed_extensions) return
 
   const extnList = this.cfg.main.disallowed_extensions
-    .replace(/\s+/, ' ')
+    .replace(/\s+/g, ' ')
     .split(/[;, ]/)
     .map((e) => e.trim())
     .filter(Boolean)
@@ -197,7 +195,7 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
 
         if (code && code > 0) {
           // Error was returned
-          return reject(`"${cmd_path} ${args.join(' ')}" returned error code: ${code}}`)
+          return reject(`"${cmd_path} ${args.join(' ')}" returned error code: ${code}`)
         }
 
         if (signal) {
@@ -431,8 +429,10 @@ exports.content_type = function (connection, ctype) {
 
 exports.isArchive = function (file_ext) {
   // check with and without the dot prefixed
-  if (this.cfg.archive.exts[file_ext]) return true
-  if (file_ext[0] === '.' && this.cfg.archive.exts[file_ext.substring(1)]) return true
+  const exts = this.cfg?.archive?.exts ?? false
+  if (!exts) return false
+  if (exts[file_ext]) return true
+  if (file_ext && file_ext[0] === '.' && exts[file_ext.substring(1)]) return true
   return false
 }
 
@@ -487,7 +487,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
     }
     connection.logdebug(
       plugin,
-      `Got tmpfile: attachment="${filename}" tmpfile="${fn}" fd={fd}`,
+      `Got tmpfile: attachment="${filename}" tmpfile="${fn}" fd=${fd}`,
     )
 
     const ws = fs.createWriteStream(fn)
