@@ -75,18 +75,17 @@ exports.find_bsdtar_path = async function () {
 }
 
 exports.hook_init_master = exports.hook_init_child = function (next) {
-  const plugin = this
 
-  plugin
+  this
     .find_bsdtar_path()
     .then((dir) => {
-      plugin.logdebug(`found bsdtar in ${dir}`)
-      plugin.bsdtar_path = `${dir}/bsdtar`
+      this.logdebug(`found bsdtar in ${dir}`)
+      this.bsdtar_path = `${dir}/bsdtar`
       next()
     })
     .catch(() => {
       archives_disabled = true
-      plugin.logwarn(
+      this.logwarn(
         `This plugin requires the 'bsdtar' binary to extract filenames from archive files`,
       )
       next()
@@ -140,226 +139,186 @@ exports.options_to_object = function (options) {
   return false
 }
 
+exports.timedOutSpawn = async function (plugin, connection, cmd_path, args, env, pipe_stdout_ws, ctx) {
+  connection.logdebug(plugin, `running "${cmd_path} ${args.join(' ')}"`)
+
+  return new Promise(function (resolve, reject) {
+    let output = ''
+    const p = spawn(cmd_path, args, env)
+
+    // Start timer
+    let timeout = false
+    const timer = setTimeout(() => {
+      timeout = ctx.timeouted = true
+      p.kill()
+
+      reject(`command "${cmd_path} ${args}" timed out`)
+    }, plugin.cfg.timeout)
+
+    if (pipe_stdout_ws) {
+      p.stdout.pipe(pipe_stdout_ws)
+    } else {
+      p.stdout.on('data', (data) => (output += data))
+    }
+
+    p.stderr.on('data', (data) => {
+      if (String(data).includes('Incorrect passphrase')) {
+        ctx.encrypted = true
+      }
+      connection.logdebug(plugin, `"${cmd_path} ${args.join(' ')}": ${data}`)
+    })
+
+    p.on('exit', (code, signal) => {
+      if (timeout) return
+      clearTimeout(timer)
+
+      if (code && code > 0) {
+        return reject(`"${cmd_path} ${args.join(' ')}" returned error code: ${code}`)
+      }
+
+      if (signal) {
+        return reject(`"${cmd_path} ${args.join(' ')}" terminated by signal: ${signal}`)
+      }
+
+      resolve(output)
+    })
+  })
+}
+
+exports.createTmp = function () {
+  return new Promise((resolve, reject) => {
+    tmp.file((err, tmpfile, fd) => {
+      if (err) return reject(err)
+      resolve({ name: tmpfile, fd })
+    })
+  })
+}
+
+exports.unpackArchive = async function (plugin, connection, in_file, file, ctx) {
+  const t = await this.createTmp()
+  ctx.tmpfiles.push([t.fd, t.name])
+
+  connection.logdebug(plugin, `created tmp file: ${t.name} (fd=${t.fd}) for file ${file}`)
+
+  const tws = fs.createWriteStream(t.name)
+  try {
+    await this.timedOutSpawn(
+      plugin,
+      connection,
+      plugin.bsdtar_path,
+      ['-Oxf', in_file, `--include=${file}`, '--passphrase', 'deliberately_invalid'],
+      { cwd: '/tmp', env: { LANG: 'C' } },
+      tws,
+      ctx,
+    )
+  } catch (e) {
+    connection.logdebug(plugin, e)
+  }
+  return t
+}
+
+exports.listArchive = async function (plugin, connection, in_file, ctx) {
+  try {
+    const lines = await this.timedOutSpawn(
+      plugin,
+      connection,
+      plugin.bsdtar_path,
+      ['-tf', in_file, '--passphrase', 'deliberately_invalid'],
+      { cwd: '/tmp', env: { LANG: 'C' } },
+      null,
+      ctx,
+    )
+    return String(lines).split(/\r?\n/).filter((fl) => fl)
+  } catch (e) {
+    connection.logdebug(plugin, e)
+    return []
+  }
+}
+
+exports.deleteTempFiles = function (plugin, connection, ctx) {
+  for (const [fd, name] of ctx.tmpfiles) {
+    fs.close(fd, () => {
+      connection.logdebug(plugin, `closed fd: ${fd}`)
+      fs.unlink(name, () => {
+        connection.logdebug(plugin, `deleted tempfile: ${name}`)
+      })
+    })
+  }
+}
+
+exports.processFile = async function (plugin, connection, in_file, prefix, file, depth, ctx) {
+  let result = [(prefix ? `${prefix}/` : '') + file]
+
+  connection.logdebug(plugin, `found file: ${prefix ? `${prefix}/` : ''}${file} depth=${depth}`)
+
+  if (!plugin.isArchive(path.extname(file.toLowerCase()))) {
+    return result
+  }
+
+  connection.logdebug(plugin, `need to extract file: ${prefix ? `${prefix}/` : ''}${file}`)
+
+  const t = await this.unpackArchive(plugin, connection, in_file, file, ctx)
+
+  try {
+    result = result.concat(await this.listFiles(plugin, connection, t.name, (prefix ? `${prefix}/` : '') + file, depth + 1, ctx))
+  } catch (e) {
+    connection.logdebug(plugin, e)
+  }
+
+  return result
+}
+
+exports.listFiles = async function (plugin, connection, in_file, prefix, depth, ctx) {
+  const result = []
+  depth = depth || 0
+
+  if (ctx.timeouted) {
+    connection.logdebug(plugin, `already timeouted, not going to process ${prefix ? `${prefix}/` : ''}${in_file}`)
+    return result
+  }
+
+  if (depth >= plugin.cfg.archive.max_depth) {
+    ctx.depthExceeded = true
+    connection.logdebug(plugin, `hit maximum depth with ${prefix ? `${prefix}/` : ''}${in_file}`)
+    return result
+  }
+
+  const fls = await this.listArchive(plugin, connection, in_file, ctx)
+  await Promise.all(
+    fls.map(async (file) => {
+      const output = await this.processFile(plugin, connection, in_file, prefix, file, depth + 1, ctx)
+      result.push(...output)
+    }),
+  )
+
+  connection.loginfo(plugin, `finish (${prefix ? `${prefix}/` : ''}${in_file}): count=${result.length} depth=${depth}`)
+  return result
+}
+
 exports.unarchive_recursive = async function (connection, f, archive_file_name) {
   if (archives_disabled) {
     connection.logdebug(this, 'archive support disabled')
     return []
   }
 
-  const plugin = this
-  const tmpfiles = []
-
-  let timeouted = false
-  let encrypted = false
-  let depthExceeded = false
-
-  function timeoutedSpawn(cmd_path, args, env, pipe_stdout_ws) {
-    connection.logdebug(plugin, `running "${cmd_path} ${args.join(' ')}"`)
-
-    return new Promise(function (resolve, reject) {
-      let output = ''
-      const p = spawn(cmd_path, args, env)
-
-      // Start timer
-      let timeout = false
-      const timer = setTimeout(() => {
-        timeout = timeouted = true
-        p.kill()
-
-        reject(`command "${cmd_path} ${args}" timed out`)
-      }, plugin.cfg.timeout)
-
-      if (pipe_stdout_ws) {
-        p.stdout.pipe(pipe_stdout_ws)
-      } else {
-        p.stdout.on('data', (data) => (output += data))
-      }
-
-      p.stderr.on('data', (data) => {
-        if (data.includes('Incorrect passphrase')) {
-          encrypted = true
-        }
-
-        // it seems that stderr might be sometimes filled after exit so we rather print it out than wait for result
-        connection.logdebug(plugin, `"${cmd_path} ${args.join(' ')}": ${data}`)
-      })
-
-      p.on('exit', (code, signal) => {
-        if (timeout) return
-        clearTimeout(timer)
-
-        if (code && code > 0) {
-          // Error was returned
-          return reject(`"${cmd_path} ${args.join(' ')}" returned error code: ${code}`)
-        }
-
-        if (signal) {
-          // Process terminated due to signal
-          return reject(`"${cmd_path} ${args.join(' ')}" terminated by signal: ${signal}`)
-        }
-
-        resolve(output)
-      })
-    })
-  }
-
-  function createTmp() {
-    return new Promise((resolve, reject) => {
-      tmp.file((err, tmpfile, fd) => {
-        if (err) reject(err)
-
-        const t = {}
-        t.name = tmpfile
-        t.fd = fd
-
-        resolve(t)
-      })
-    })
-  }
-
-  async function unpackArchive(in_file, file) {
-    const t = await createTmp()
-    tmpfiles.push([t.fd, t.name])
-
-    connection.logdebug(
-      plugin,
-      `created tmp file: ${t.name} (fd=${t.fd}) for file ${file}`,
-    )
-
-    const tws = fs.createWriteStream(t.name)
-    try {
-      // bsdtar seems to be asking for password if archive is encrypted workaround with --passphrase will end up
-      // with "Incorrect passphrase" for encrypted archives, but will be ignored with nonencrypted
-      await timeoutedSpawn(
-        plugin.bsdtar_path,
-        ['-Oxf', in_file, `--include=${file}`, '--passphrase', 'deliberately_invalid'],
-        {
-          cwd: '/tmp',
-          env: {
-            LANG: 'C',
-          },
-        },
-        tws,
-      )
-    } catch (e) {
-      connection.logdebug(plugin, e)
-    }
-    return t
-  }
-
-  async function listArchive(in_file) {
-    try {
-      const lines = await timeoutedSpawn(
-        plugin.bsdtar_path,
-        ['-tf', in_file, '--passphrase', 'deliberately_invalid'],
-        {
-          cwd: '/tmp',
-          env: { LANG: 'C' },
-        },
-      )
-
-      // Extract non-empty filenames
-      return lines.split(/\r?\n/).filter((fl) => fl)
-    } catch (e) {
-      connection.logdebug(plugin, e)
-      return []
-    }
-  }
-
-  function deleteTempFiles() {
-    for (const [fd, name] of tmpfiles) {
-      fs.close(fd, () => {
-        connection.logdebug(plugin, `closed fd: ${fd}`)
-        fs.unlink(name, () => {
-          connection.logdebug(plugin, `deleted tempfile: ${name}`)
-        })
-      })
-    }
-  }
-
-  async function processFile(in_file, prefix, file, depth) {
-    let result = [(prefix ? `${prefix}/` : '') + file]
-
-    connection.logdebug(
-      plugin,
-      `found file: ${prefix ? `${prefix}/` : ''}${file} depth=${depth}`,
-    )
-
-    if (!plugin.isArchive(path.extname(file.toLowerCase()))) {
-      return result
-    }
-
-    connection.logdebug(
-      plugin,
-      `need to extract file: ${prefix ? `${prefix}/` : ''}${file}`,
-    )
-
-    const t = await unpackArchive(in_file, file)
-
-    // Recurse
-    try {
-      result = result.concat(
-        await listFiles(t.name, (prefix ? `${prefix}/` : '') + file, depth + 1),
-      )
-    } catch (e) {
-      connection.logdebug(plugin, e)
-    }
-
-    return result
-  }
-
-  async function listFiles(in_file, prefix, depth) {
-    const result = []
-    depth = depth || 0
-
-    if (timeouted) {
-      connection.logdebug(
-        plugin,
-        `already timeouted, not going to process ${prefix ? `${prefix}/` : ''}${in_file}`,
-      )
-      return result
-    }
-
-    if (depth >= plugin.cfg.archive.max_depth) {
-      depthExceeded = true
-      connection.logdebug(
-        plugin,
-        `hit maximum depth with ${prefix ? `${prefix}/` : ''}${in_file}`,
-      )
-      return result
-    }
-
-    const fls = await listArchive(in_file)
-    await Promise.all(
-      fls.map(async (file) => {
-        const output = await processFile(in_file, prefix, file, depth + 1)
-        result.push(...output)
-      }),
-    )
-
-    connection.loginfo(
-      plugin,
-      `finish (${prefix ? `${prefix}/` : ''}${in_file}): count=${result.length} depth=${depth}`,
-    )
-    return result
-  }
+  const ctx = { tmpfiles: [], timeouted: false, encrypted: false, depthExceeded: false }
 
   setTimeout(() => {
-    timeouted = true
-  }, plugin.cfg.timeout)
+    ctx.timeouted = true
+  }, this.cfg.timeout)
 
-  const files = await listFiles(f, archive_file_name)
-  deleteTempFiles()
+  const files = await this.listFiles(this, connection, f, archive_file_name, 0, ctx)
+  this.deleteTempFiles(this, connection, ctx)
 
-  if (timeouted) {
+  if (ctx.timeouted) {
     const err = new Error('archive extraction timeouted')
     err.files = files
     throw err
-  } else if (depthExceeded) {
+  } else if (ctx.depthExceeded) {
     const err = new Error('maximum archive depth exceeded')
     err.files = files
     throw err
-  } else if (encrypted) {
+  } else if (ctx.encrypted) {
     const err = new Error('archive encrypted')
     err.files = files
     throw err
