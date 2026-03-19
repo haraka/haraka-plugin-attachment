@@ -30,9 +30,7 @@ exports.load_tmp_module = function () {
     tmp.setGracefulCleanup();
   } catch (ignore) {
     archives_disabled = true;
-    this.logwarn(
-      `the 'tmp' module is required to extract filenames from archives`,
-    );
+    this.logwarn(`the 'tmp' module is required to extract filenames from archives`);
   }
 };
 
@@ -112,10 +110,7 @@ exports.load_disallowed_extns = function () {
   if (!plugin.re) plugin.re = {};
   plugin.re.bad_extn = new RegExp(
     '\\.(?:' +
-      plugin.cfg.main.disallowed_extensions
-        .replace(/\s+/, ' ')
-        .split(/[;, ]/)
-        .join('|') +
+      plugin.cfg.main.disallowed_extensions.replace(/\s+/, ' ').split(/[;, ]/).join('|') +
       ')$',
     'i',
   );
@@ -159,12 +154,7 @@ exports.options_to_object = function (options) {
   return false;
 };
 
-exports.unarchive_recursive = async function (
-  connection,
-  f,
-  archive_file_name,
-  cb,
-) {
+exports.unarchive_recursive = async function (connection, f, archive_file_name, cb) {
   if (archives_disabled) {
     connection.logdebug(this, 'archive support disabled');
     return cb();
@@ -214,9 +204,7 @@ exports.unarchive_recursive = async function (
 
         if (code && code > 0) {
           // Error was returned
-          return reject(
-            `"${cmd_path} ${args.join(' ')}" returned error code: ${code}}`,
-          );
+          return reject(`"${cmd_path} ${args.join(' ')}" returned error code: ${code}}`);
         }
 
         if (signal) {
@@ -261,13 +249,7 @@ exports.unarchive_recursive = async function (
       // with "Incorrect passphrase" for encrypted archives, but will be ignored with nonencrypted
       await timeoutedSpawn(
         plugin.bsdtar_path,
-        [
-          '-Oxf',
-          in_file,
-          `--include=${file}`,
-          '--passphrase',
-          'deliberately_invalid',
-        ],
+        ['-Oxf', in_file, `--include=${file}`, '--passphrase', 'deliberately_invalid'],
         {
           cwd: '/tmp',
           env: {
@@ -397,12 +379,7 @@ exports.unarchive_recursive = async function (
   }
 };
 
-exports.compute_and_log_md5sum = function (
-  connection,
-  ctype,
-  filename,
-  stream,
-) {
+exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) {
   const plugin = this;
   const md5 = crypto.createHash('md5');
   let bytes = 0;
@@ -464,18 +441,11 @@ exports.content_type = function (connection, ctype) {
 exports.isArchive = function (file_ext) {
   // check with and without the dot prefixed
   if (this.cfg.archive.exts[file_ext]) return true;
-  if (file_ext[0] === '.' && this.cfg.archive.exts[file_ext.substring(1)])
-    return true;
+  if (file_ext[0] === '.' && this.cfg.archive.exts[file_ext.substring(1)]) return true;
   return false;
 };
 
-exports.start_attachment = function (
-  connection,
-  ctype,
-  filename,
-  body,
-  stream,
-) {
+exports.start_attachment = function (connection, ctype, filename, body, stream) {
   const plugin = this;
   const txn = connection?.transaction;
 
@@ -556,19 +526,13 @@ exports.start_attachment = function (
             ];
           } else if (/Encrypted file is unsupported/i.test(error.message)) {
             if (!plugin.cfg.main.allow_encrypted_archives) {
-              txn.notes.attachment_result = [
-                DENY,
-                'Message contains encrypted archive',
-              ];
+              txn.notes.attachment_result = [DENY, 'Message contains encrypted archive'];
             }
           } else if (/Mac metadata is too large/i.test(error.message)) {
             // Skip this error
           } else {
             if (!connection.relaying) {
-              txn.notes.attachment_result = [
-                DENYSOFT,
-                'Error unpacking archive',
-              ];
+              txn.notes.attachment_result = [DENYSOFT, 'Error unpacking archive'];
             }
           }
         }
@@ -604,17 +568,15 @@ exports.disallowed_extensions = function (txn) {
   if (!plugin.re.bad_extn) return false;
 
   let bad = false;
-  [txn.notes.attachment_files, txn.notes.attachment_archive_files].forEach(
-    (items) => {
-      if (bad) return;
-      if (!items || !Array.isArray(items)) return;
-      for (const extn of items) {
-        if (!plugin.re.bad_extn.test(extn)) continue;
-        bad = extn.split('.').slice(0).pop();
-        break;
-      }
-    },
-  );
+  [txn.notes.attachment_files, txn.notes.attachment_archive_files].forEach((items) => {
+    if (bad) return;
+    if (!items || !Array.isArray(items)) return;
+    for (const extn of items) {
+      if (!plugin.re.bad_extn.test(extn)) continue;
+      bad = extn.split('.').slice(0).pop();
+      break;
+    }
+  });
 
   return bad;
 };
@@ -644,9 +606,7 @@ exports.check_attachments = function (next, connection) {
       let child_ct;
       if (
         body.children[c] &&
-        (child_ct = this.re.ct.exec(
-          body.children[c].header.get('content-type'),
-        ))
+        (child_ct = this.re.ct.exec(body.children[c].header.get('content-type')))
       ) {
         connection.logdebug(this, `found content type: ${child_ct[1]}`);
         ctypes.push(child_ct[1]);
@@ -656,10 +616,7 @@ exports.check_attachments = function (next, connection) {
 
   const bad_extn = this.disallowed_extensions(txn);
   if (bad_extn) {
-    return next(
-      DENY,
-      `Message contains disallowed file extension (${bad_extn})`,
-    );
+    return next(DENY, `Message contains disallowed file extension (${bad_extn})`);
   }
 
   const ctypes_result = this.check_items_against_regexps(ctypes, this.re.ctype);
@@ -668,10 +625,7 @@ exports.check_attachments = function (next, connection) {
       this,
       `match ctype="${ctypes_result[0]}" regexp=/${ctypes_result[1]}/`,
     );
-    return next(
-      DENY,
-      `Message contains unacceptable content type (${ctypes_result[0]})`,
-    );
+    return next(DENY, `Message contains unacceptable content type (${ctypes_result[0]})`);
   }
 
   const files = txn.notes.attachment_files;
@@ -681,10 +635,7 @@ exports.check_attachments = function (next, connection) {
       this,
       `match file="${files_result[0]}" regexp=/${files_result[1]}/`,
     );
-    return next(
-      DENY,
-      `Message contains unacceptable attachment (${files_result[0]})`,
-    );
+    return next(DENY, `Message contains unacceptable attachment (${files_result[0]})`);
   }
 
   const archive_files = txn.notes.attachment_archive_files;
@@ -697,10 +648,7 @@ exports.check_attachments = function (next, connection) {
       this,
       `match file="${archives_result[0]}" regexp=/${archives_result[1]}/`,
     );
-    return next(
-      DENY,
-      `Message contains unacceptable attachment (${archives_result[0]})`,
-    );
+    return next(DENY, `Message contains unacceptable attachment (${archives_result[0]})`);
   }
 
   next();

@@ -124,19 +124,14 @@ describe('check_items_against_regexps', function () {
 
     assert.ok(attach.check_items_against_regexps(['file.exe'], attach.re.test));
     assert.ok(
-      attach.check_items_against_regexps(
-        ['fine.pdf', 'awful.exe'],
-        attach.re.test,
-      ),
+      attach.check_items_against_regexps(['fine.pdf', 'awful.exe'], attach.re.test),
     );
   });
 
   it('negative', function () {
     attach.load_n_compile_re('test', 'attachment.filename.regex');
 
-    assert.ok(
-      !attach.check_items_against_regexps(['file.png'], attach.re.test),
-    );
+    assert.ok(!attach.check_items_against_regexps(['file.png'], attach.re.test));
     assert.ok(
       !attach.check_items_against_regexps(
         ['fine.pdf', 'godiva.chocolate'],
@@ -341,11 +336,7 @@ describe('start_attachment', function () {
     await new Promise((resolve) => {
       this.plugin.hook_data(function () {
         // console.log(pi)
-        const msgPath = path.join(
-          __dirname,
-          'fixtures',
-          'haraka-icon-attach.eml',
-        );
+        const msgPath = path.join(__dirname, 'fixtures', 'haraka-icon-attach.eml');
         // console.log(`msgPath: ${msgPath}`)
         const specimen = fs.readFileSync(msgPath, 'utf8');
 
@@ -358,9 +349,7 @@ describe('start_attachment', function () {
 
         // console.dir(txn.message_stream)
         assert.deepEqual(
-          txn.message_stream.idx[
-            'Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'
-          ],
+          txn.message_stream.idx['Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'],
           { start: 5232, end: 6384 },
         );
         resolve();
