@@ -204,7 +204,6 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name) 
   }
 
   function createTmp() {
-    // might be better to use async version of tmp in future not cb based
     return new Promise((resolve, reject) => {
       tmp.file((err, tmpfile, fd) => {
         if (err) reject(err)
@@ -548,7 +547,6 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
 }
 
 exports.hook_data = function (next, connection) {
-  const plugin = this
   if (!connection?.transaction) return next()
   const txn = connection?.transaction
 
@@ -559,21 +557,20 @@ exports.hook_data = function (next, connection) {
   txn.notes.attachment_files = []
   txn.notes.attachment_archive_files = []
   txn.attachment_hooks((ctype, filename, body, stream) => {
-    plugin.start_attachment(connection, ctype, filename, body, stream)
+    this.start_attachment(connection, ctype, filename, body, stream)
   })
   next()
 }
 
 exports.disallowed_extensions = function (txn) {
-  const plugin = this
-  if (!plugin.re.bad_extn) return false
+  if (!this.re.bad_extn) return false
 
   let bad = false
   for (const items of [txn.notes.attachment_files, txn.notes.attachment_archive_files]) {
     if (bad) continue
     if (!items || !Array.isArray(items)) continue
     for (const extn of items) {
-      if (!plugin.re.bad_extn.test(extn)) continue
+      if (!this.re.bad_extn.test(extn)) continue
       bad = extn.split('.').slice(0).pop()
       break
     }
