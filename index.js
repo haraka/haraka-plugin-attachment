@@ -140,10 +140,10 @@ exports.options_to_object = function (options) {
   return false
 }
 
-exports.unarchive_recursive = async function (connection, f, archive_file_name, cb) {
+exports.unarchive_recursive = async function (connection, f, archive_file_name) {
   if (archives_disabled) {
     connection.logdebug(this, 'archive support disabled')
-    return cb()
+    return []
   }
 
   const plugin = this
@@ -353,14 +353,20 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
   deleteTempFiles()
 
   if (timeouted) {
-    cb(new Error('archive extraction timeouted'), files)
+    const err = new Error('archive extraction timeouted')
+    err.files = files
+    throw err
   } else if (depthExceeded) {
-    cb(new Error('maximum archive depth exceeded'), files)
+    const err = new Error('maximum archive depth exceeded')
+    err.files = files
+    throw err
   } else if (encrypted) {
-    cb(new Error('archive encrypted'), files)
-  } else {
-    cb(null, files)
+    const err = new Error('archive encrypted')
+    err.files = files
+    throw err
   }
+
+  return files
 }
 
 exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) {
@@ -500,10 +506,19 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
     ws.on('close', () => {
       connection.logdebug(plugin, 'end of stream reached')
       connection.pause()
-      plugin.unarchive_recursive(connection, fn, filename, (error, files) => {
-        txn.notes.attachment_count--
-        cleanup()
-        if (error) {
+      plugin
+        .unarchive_recursive(connection, fn, filename)
+        .then((files) => {
+          txn.notes.attachment_count--
+          cleanup()
+          txn.notes.attachment_archive_files =
+            txn.notes.attachment_archive_files.concat(files)
+          connection.resume()
+          next()
+        })
+        .catch((error) => {
+          txn.notes.attachment_count--
+          cleanup()
           connection.logerror(plugin, error.message)
           if (error.message === 'maximum archive depth exceeded') {
             txn.notes.attachment_result = [
@@ -521,13 +536,13 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
               txn.notes.attachment_result = [DENYSOFT, 'Error unpacking archive']
             }
           }
-        }
 
-        txn.notes.attachment_archive_files =
-          txn.notes.attachment_archive_files.concat(files)
-        connection.resume()
-        next()
-      })
+          const files = error.files || []
+          txn.notes.attachment_archive_files =
+            txn.notes.attachment_archive_files.concat(files)
+          connection.resume()
+          next()
+        })
     })
   })
 }

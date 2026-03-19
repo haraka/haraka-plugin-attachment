@@ -189,171 +189,122 @@ describe('content_type', function () {
 
 describe('unarchive_recursive', function () {
   beforeEach(_set_up)
-
   it('3layers', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/3layer.zip`,
-        '3layer.zip',
-        (e, files) => {
-          assert.equal(e, null)
-          assert.equal(files.length, 3)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/3layer.zip`,
+      '3layer.zip',
+    )
+    assert.equal(files.length, 3)
   })
 
   it('empty.gz', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/empty.gz`,
-        'empty.gz',
-        (e, files) => {
-          assert.equal(e, null)
-          assert.equal(files.length, 0)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/empty.gz`,
+      'empty.gz',
+    )
+    assert.equal(files.length, 0)
   })
 
   it('encrypt.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/encrypt.zip`,
-        'encrypt.zip',
-        (e, files) => {
-          // we see files list in encrypted zip, but we can't extract so no error here
-          assert.equal(e, null)
-          assert.equal(files?.length, 1)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/encrypt.zip`,
+      'encrypt.zip',
+    )
+    // we see files list in encrypted zip, but we can't extract so no error here
+    assert.equal(files?.length, 1)
   })
 
   it('encrypt-recursive.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
+    try {
+      await this.plugin.unarchive_recursive(
         this.connection,
         `${this.directory}/encrypt-recursive.zip`,
         'encrypt-recursive.zip',
-        (e, files) => {
-          // we can't extract encrypted file in encrypted zip so error here
-          assert.equal(true, e.message.includes('encrypted'))
-          assert.equal(files.length, 1)
-          resolve()
-        },
       )
-    })
+      throw new Error('expected encrypted error')
+    } catch (e) {
+      // we can't extract encrypted file in encrypted zip so error here
+      assert.equal(true, e.message.includes('encrypted'))
+      const files = e.files || []
+      assert.equal(files.length, 1)
+    }
   })
 
   it('gz-in-zip.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/gz-in-zip.zip`,
-        'gz-in-zip.zip',
-        (e, files) => {
-          // gz is not listable in bsdtar
-          assert.equal(e, null)
-          assert.equal(files.length, 1)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/gz-in-zip.zip`,
+      'gz-in-zip.zip',
+    )
+    // gz is not listable in bsdtar
+    assert.equal(files.length, 1)
   })
 
   it('invalid.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/invalid.zip`,
-        'invalid.zip',
-        (e, files) => {
-          // invalid zip is assumed to be just file, so error of bsdtar is ignored
-          assert.equal(e, null)
-          assert.equal(files.length, 0)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/invalid.zip`,
+      'invalid.zip',
+    )
+    // invalid zip is assumed to be just file, so error of bsdtar is ignored
+    assert.equal(files.length, 0)
   })
 
   it('invalid-in-valid.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/invalid-in-valid.zip`,
-        'invalid-in-valid.zip',
-        (e, files) => {
-          assert.equal(e, null)
-          assert.equal(files.length, 1)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/invalid-in-valid.zip`,
+      'invalid-in-valid.zip',
+    )
+    assert.equal(files.length, 1)
   })
 
   it('password.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/password.zip`,
-        'password.zip',
-        (e, files) => {
-          // we see files list in encrypted zip, but we can't extract so no error here
-          assert.equal(e, null)
-          assert.equal(files.length, 1)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/password.zip`,
+      'password.zip',
+    )
+    // we see files list in encrypted zip, but we can't extract so no error here
+    assert.equal(files.length, 1)
   })
 
   it('valid.zip', async function () {
     if (!this.plugin.bsdtar_path) return
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/valid.zip`,
-        'valid.zip',
-        (e, files) => {
-          assert.equal(e, null)
-          assert.equal(files.length, 1)
-          resolve()
-        },
-      )
-    })
+    const files = await this.plugin.unarchive_recursive(
+      this.connection,
+      `${this.directory}/valid.zip`,
+      'valid.zip',
+    )
+    assert.equal(files.length, 1)
   })
 
   it('timeout', async function () {
     if (!this.plugin.bsdtar_path) return
     this.plugin.cfg.timeout = 0
-    await new Promise((resolve) => {
-      this.plugin.unarchive_recursive(
+    try {
+      await this.plugin.unarchive_recursive(
         this.connection,
         `${this.directory}/encrypt-recursive.zip`,
         'encrypt-recursive.zip',
-        (e, files) => {
-          assert.ok(true, e.message.includes('timeout'))
-          assert.equal(files.length, 0)
-          resolve()
-        },
       )
-    })
+      throw new Error('expected timeout error')
+    } catch (e) {
+      assert.ok(e.message.includes('timeout'))
+      const files = e.files || []
+      assert.equal(files.length, 0)
+    }
   })
 })
 
@@ -390,6 +341,8 @@ describe('start_attachment', function () {
 })
 
 describe('wait_for_attachment_hooks and start_attachment (md5 only)', function () {
+  // beforeEach(_set_up)
+
   it('wait_for_attachment_hooks sets attachment_next when count > 0', function (done) {
     const plugin = new fixtures.plugin('attachment')
     const connection = fixtures.connection.createConnection()
