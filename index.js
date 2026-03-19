@@ -44,45 +44,43 @@ exports.load_attachment_ini = function () {
   plugin.cfg.timeout = (plugin.cfg.main.timeout || 30) * 1000;
 
   // repair a mismatch between legacy docs and code
-  const extns =
-    plugin.cfg.archive && plugin.cfg.archive.extensions
-      ? plugin.cfg.archive.extensions // new
-      : plugin.cfg.main.archive_extensions // old code
-        ? plugin.cfg.main.archive_extensions
-        : plugin.cfg.main.archive_extns // old docs
-          ? plugin.cfg.main.archive_extns
-          : 'zip tar tgz taz z gz rar 7z';
+  const extns = plugin.cfg.archive?.extensions
+    ? plugin.cfg.archive.extensions // new
+    : plugin.cfg.main.archive_extensions // old code
+      ? plugin.cfg.main.archive_extensions
+      : plugin.cfg.main.archive_extns // old docs
+        ? plugin.cfg.main.archive_extns
+        : 'zip tar tgz taz z gz rar 7z';
 
   plugin.cfg.archive.exts = this.options_to_object(extns);
 
-  plugin.cfg.archive.max_depth =
-    plugin.cfg.archive && plugin.cfg.archive.max_depth
-      ? plugin.cfg.archive.max_depth // new
-      : plugin.cfg.main.archive_max_depth // old
-        ? plugin.cfg.main.archive_max_depth
-        : 5;
+  plugin.cfg.archive.max_depth = plugin.cfg.archive?.max_depth
+    ? plugin.cfg.archive.max_depth // new
+    : plugin.cfg.main.archive_max_depth // old
+      ? plugin.cfg.main.archive_max_depth
+      : 5;
 
   plugin.load_disallowed_extns();
 };
 
 exports.find_bsdtar_path = (cb) => {
-  let found = false;
-  let i = 0;
-  ['/bin', '/usr/bin', '/usr/local/bin'].forEach((dir) => {
-    if (found) return;
-    i++;
+  const dirs = ['/bin', '/usr/bin', '/usr/local/bin'];
+  let called = false;
+  let pending = dirs.length;
+  for (const dir of dirs) {
     fs.stat(`${dir}/bsdtar`, (err) => {
-      i--;
-      if (found) return;
-      if (err) {
-        if (i === 0) cb(new Error('bsdtar not found'));
-        return;
+      if (called) return;
+      if (!err) {
+        called = true;
+        return cb(null, dir);
       }
-      found = true;
-      cb(null, dir);
+      pending--;
+      if (pending === 0 && !called) {
+        called = true;
+        cb(new Error('bsdtar not found'));
+      }
     });
-    if (i === 0) cb(new Error('bsdtar not found'));
-  });
+  }
 };
 
 exports.hook_init_master = exports.hook_init_child = function (next) {
@@ -141,14 +139,10 @@ exports.options_to_object = function (options) {
   if (!options) return false;
 
   const res = {};
-  options
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .split(/[;, ]/)
-    .forEach((opt) => {
-      if (!opt) return;
-      res[opt.trim()] = true;
-    });
+  for (const opt of options.toLowerCase().replace(/\s+/g, ' ').split(/[;, ]/)) {
+    if (!opt) continue;
+    res[opt.trim()] = true;
+  }
 
   if (Object.keys(res).length) return res;
   return false;
@@ -284,14 +278,14 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
   }
 
   function deleteTempFiles() {
-    tmpfiles.forEach((t) => {
+    for (const t of tmpfiles) {
       fs.close(t[0], () => {
         connection.logdebug(plugin, `closed fd: ${t[0]}`);
         fs.unlink(t[1], () => {
           connection.logdebug(plugin, `deleted tempfile: ${t[1]}`);
         });
       });
-    });
+    }
   }
 
   async function processFile(in_file, prefix, file, depth) {
@@ -568,15 +562,15 @@ exports.disallowed_extensions = function (txn) {
   if (!plugin.re.bad_extn) return false;
 
   let bad = false;
-  [txn.notes.attachment_files, txn.notes.attachment_archive_files].forEach((items) => {
-    if (bad) return;
-    if (!items || !Array.isArray(items)) return;
+  for (const items of [txn.notes.attachment_files, txn.notes.attachment_archive_files]) {
+    if (bad) continue;
+    if (!items || !Array.isArray(items)) continue;
     for (const extn of items) {
       if (!plugin.re.bad_extn.test(extn)) continue;
       bad = extn.split('.').slice(0).pop();
       break;
     }
-  });
+  }
 
   return bad;
 };
@@ -658,9 +652,9 @@ exports.check_items_against_regexps = function (items, regexps) {
   if (!Array.isArray(regexps) || !Array.isArray(items)) return false;
   if (!regexps?.length || !items?.length) return false;
 
-  for (let r = 0; r < regexps.length; r++) {
-    for (let i = 0; i < items.length; i++) {
-      if (regexps[r].test(items[i])) return [items[i], regexps[r]];
+  for (const re of regexps) {
+    for (const item of items) {
+      if (re.test(item)) return [item, re];
     }
   }
   return false;
