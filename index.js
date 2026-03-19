@@ -64,7 +64,7 @@ exports.load_attachment_ini = function () {
         ? plugin.cfg.main.archive_max_depth
         : 5;
 
-  plugin.load_dissallowed_extns();
+  plugin.load_disallowed_extns();
 };
 
 exports.find_bsdtar_path = (cb) => {
@@ -104,7 +104,7 @@ exports.hook_init_master = exports.hook_init_child = function (next) {
   });
 };
 
-exports.load_dissallowed_extns = function () {
+exports.load_disallowed_extns = function () {
   const plugin = this;
 
   if (!plugin.cfg.main.disallowed_extensions) return;
@@ -148,7 +148,7 @@ exports.options_to_object = function (options) {
   const res = {};
   options
     .toLowerCase()
-    .replace(/\s+/, ' ')
+    .replace(/\s+/g, ' ')
     .split(/[;, ]/)
     .forEach((opt) => {
       if (!opt) return;

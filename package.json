@@ -43,6 +43,7 @@
     "url": "https://github.com/haraka/haraka-plugin-attachment/issues"
   },
   "prettier": {
+    "printWidth": 90,
     "singleQuote": true
   }
 }

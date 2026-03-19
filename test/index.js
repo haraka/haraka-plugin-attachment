@@ -39,10 +39,18 @@ describe('options_to_object', function () {
   });
 });
 
-describe('load_dissallowed_extns', function () {
+describe('options_to_object regression', function () {
+  it('should split on all whitespace, not just the first', function () {
+    const input = 'zip   gz   rar';
+    const result = attach.options_to_object(input);
+    assert.deepEqual(result, { zip: true, gz: true, rar: true });
+  });
+});
+
+describe('load_disallowed_extns', function () {
   it('loads comma separated options', function () {
     attach.cfg = { main: { disallowed_extensions: 'exe,scr' } };
-    attach.load_dissallowed_extns();
+    attach.load_disallowed_extns();
 
     assert.ok(attach.re.bad_extn);
     assert.ok(attach.re.bad_extn.test('bad.scr'));
@@ -50,7 +58,7 @@ describe('load_dissallowed_extns', function () {
 
   it('loads space separated options', function () {
     attach.cfg = { main: { disallowed_extensions: 'dll tnef' } };
-    attach.load_dissallowed_extns();
+    attach.load_disallowed_extns();
     assert.ok(attach.re.bad_extn);
     assert.ok(attach.re.bad_extn.test('bad.dll'));
   });
@@ -69,7 +77,7 @@ describe('file_extension', function () {
 describe('disallowed_extensions', function () {
   it('blocks filename extensions in attachment_files', function () {
     attach.cfg = { main: { disallowed_extensions: 'exe;scr' } };
-    attach.load_dissallowed_extns();
+    attach.load_disallowed_extns();
 
     const connection = fixtures.connection.createConnection();
     connection.init_transaction();
@@ -84,7 +92,7 @@ describe('disallowed_extensions', function () {
 
   it('blocks filename extensions in archive_files', function () {
     attach.cfg = { main: { disallowed_extensions: 'dll tnef' } };
-    attach.load_dissallowed_extns();
+    attach.load_disallowed_extns();
 
     const connection = fixtures.connection.createConnection();
     connection.init_transaction();
