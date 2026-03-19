@@ -101,25 +101,24 @@ exports.hook_init_master = exports.hook_init_child = function (next) {
 }
 
 exports.load_disallowed_extns = function () {
-  const plugin = this
+  if (!this.cfg.main.disallowed_extensions) return
 
-  if (!plugin.cfg.main.disallowed_extensions) return
+  const extnList = this.cfg.main.disallowed_extensions
+    .replace(/\s+/, ' ')
+    .split(/[;, ]/)
+    .map((e) => e.trim())
+    .filter(Boolean)
+    .join('|')
 
-  if (!plugin.re) plugin.re = {}
-  plugin.re.bad_extn = new RegExp(
-    '\\.(?:' +
-      plugin.cfg.main.disallowed_extensions.replace(/\s+/, ' ').split(/[;, ]/).join('|') +
-      ')$',
-    'i',
-  )
+  if (!this.re) this.re = {}
+  this.re.bad_extn = new RegExp(`\\.(?:${extnList})$`, 'i')
 }
 
 exports.load_n_compile_re = function (name, file) {
-  const plugin = this
   const valid_re = []
 
-  const try_re = plugin.config.get(file, 'list', function () {
-    plugin.load_n_compile_re(name, file)
+  const try_re = this.config.get(file, 'list', () => {
+    this.load_n_compile_re(name, file)
   })
 
   for (let r = 0; r < try_re.length; r++) {
@@ -131,8 +130,8 @@ exports.load_n_compile_re = function (name, file) {
     }
   }
 
-  if (!plugin.re) plugin.re = {}
-  plugin.re[name] = valid_re
+  if (!this.re) this.re = {}
+  this.re[name] = valid_re
 }
 
 exports.options_to_object = function (options) {
@@ -276,11 +275,11 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name, 
   }
 
   function deleteTempFiles() {
-    for (const t of tmpfiles) {
-      fs.close(t[0], () => {
-        connection.logdebug(plugin, `closed fd: ${t[0]}`)
-        fs.unlink(t[1], () => {
-          connection.logdebug(plugin, `deleted tempfile: ${t[1]}`)
+    for (const [fd, name] of tmpfiles) {
+      fs.close(fd, () => {
+        connection.logdebug(plugin, `closed fd: ${fd}`)
+        fs.unlink(name, () => {
+          connection.logdebug(plugin, `deleted tempfile: ${name}`)
         })
       })
     }

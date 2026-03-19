@@ -4,7 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
--
+- chore: refactors for brevity and clarity
+- chore: use modern for loops
 - chore: fixed typo in load_dissallowed_extns
 - remove done callbacks in synchronous tests (#44)
 
