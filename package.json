@@ -26,7 +26,9 @@
     "test": "npx mocha --exit",
     "versions": "npx npm-dep-mgr check",
     "versions:fix": "npx npm-dep-mgr update",
-    "test:coverage": "npx c8 --reporter=text --reporter=text-summary npm test"
+    "test:coverage": "npx c8 --reporter=text --reporter=text-summary npm test",
+    "test:coverage:html": "npx c8 --reporter=html npm test",
+    "test:coverage:lcov": "npx c8 --reporter=lcov npm test"
   },
   "dependencies": {
     "tmp": "^0.2.5",

@@ -4,9 +4,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.1.6] - 2026-03-18
+
+- chore: add `node:` prefixes to builtins
+- chore: replace `plugin` with `this`
 - chore: refactors for brevity and clarity
-- chore: use modern for loops
+- chore: use modern `for` loops
 - chore: fixed typo in load_dissallowed_extns
+- style: prettier, remove line endings
 - remove done callbacks in synchronous tests (#44)
 
 ### [1.1.5] - 2025-04-02
@@ -65,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - es6 updates
 - backported changes from haraka/plugins/attachment.js
 
+
 [1.0.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.6
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.7
 [1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.0
@@ -73,3 +79,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.3]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.3
 [1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
 [1.1.5]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.5
+[1.1.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.6

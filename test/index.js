@@ -388,3 +388,56 @@ describe('start_attachment', function () {
     })
   })
 })
+
+describe('wait_for_attachment_hooks and start_attachment (md5 only)', function () {
+  it('wait_for_attachment_hooks sets attachment_next when count > 0', function (done) {
+    const plugin = new fixtures.plugin('attachment')
+    const connection = fixtures.connection.createConnection()
+    connection.init_transaction()
+    connection.transaction.notes.attachment_count = 1
+
+    plugin.wait_for_attachment_hooks(function () {
+      // should not be called immediately
+      done(new Error('next should not be called'))
+    }, connection)
+
+    // ensure attachment_next was set
+    setImmediate(() => {
+      if (connection.transaction.notes.attachment_next) return done()
+      done(new Error('attachment_next not set'))
+    })
+  })
+
+  it('start_attachment computes md5 and records attachment when no filename', function (done) {
+    const plugin = new fixtures.plugin('attachment')
+    const connection = fixtures.connection.createConnection()
+    connection.init_transaction()
+    const txn = connection.transaction
+    txn.notes.attachments = []
+    txn.notes.attachment_ctypes = []
+
+    const { PassThrough } = require('stream')
+    const stream = new PassThrough()
+
+    // call start_attachment with no filename -> should only compute md5
+    plugin.start_attachment(connection, 'application/octet-stream', null, null, stream)
+
+    // write some data and end
+    stream.write('hello world')
+    stream.end()
+
+    // wait for async md5 handler to run
+    setTimeout(() => {
+      try {
+        if (!txn.notes.attachments || txn.notes.attachments.length === 0) {
+          return done(new Error('no attachment recorded'))
+        }
+        const a = txn.notes.attachments[0]
+        if (!a.md5) return done(new Error('md5 missing'))
+        done()
+      } catch (e) {
+        done(e)
+      }
+    }, 20)
+  })
+})
