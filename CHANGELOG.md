@@ -4,6 +4,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.1.6] - 2026-03-18
+
+#### Added
+
+- 
+
+#### Fixed
+
+- 
+
+#### Changed
+
+- 
+
+#### Changed
+
+- remove done callbacks in synchronous tests (#44)
+
+
 ### [1.1.5] - 2025-04-02
 
 - fix: typo prevented unarchive zip from throwing errors #42
@@ -68,3 +87,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.3]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.3
 [1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
 [1.1.5]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.5
+[1.1.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.6
