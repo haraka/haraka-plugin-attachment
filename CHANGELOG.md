@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [1.1.6] - 2026-03-18
 
+- test: added wait_for_attachment_hooks
 - chore: add `node:` prefixes to builtins
 - chore: replace `plugin` with `this`
 - chore: refactors for brevity and clarity

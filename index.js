@@ -61,41 +61,36 @@ exports.load_attachment_ini = function () {
   this.load_disallowed_extns()
 }
 
-exports.find_bsdtar_path = (cb) => {
+exports.find_bsdtar_path = async function () {
   const dirs = ['/bin', '/usr/bin', '/usr/local/bin']
-  let called = false
-  let pending = dirs.length
   for (const dir of dirs) {
-    fs.stat(`${dir}/bsdtar`, (err) => {
-      if (called) return
-      if (!err) {
-        called = true
-        return cb(null, dir)
-      }
-      pending--
-      if (pending === 0 && !called) {
-        called = true
-        cb(new Error('bsdtar not found'))
-      }
-    })
+    try {
+      await fs.promises.stat(`${dir}/bsdtar`)
+      return dir
+    } catch (ignore) {
+      // not present in this directory, continue
+    }
   }
+  throw new Error('bsdtar not found')
 }
 
 exports.hook_init_master = exports.hook_init_child = function (next) {
   const plugin = this
 
-  plugin.find_bsdtar_path((err, dir) => {
-    if (err) {
+  plugin
+    .find_bsdtar_path()
+    .then((dir) => {
+      plugin.logdebug(`found bsdtar in ${dir}`)
+      plugin.bsdtar_path = `${dir}/bsdtar`
+      next()
+    })
+    .catch(() => {
       archives_disabled = true
       plugin.logwarn(
         `This plugin requires the 'bsdtar' binary to extract filenames from archive files`,
       )
-    } else {
-      plugin.logdebug(`found bsdtar in ${dir}`)
-      plugin.bsdtar_path = `${dir}/bsdtar`
-    }
-    next()
-  })
+      next()
+    })
 }
 
 exports.load_disallowed_extns = function () {
