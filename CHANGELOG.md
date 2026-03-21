@@ -4,6 +4,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.2.0] - 2026-03-18
+
+- chore: refactor unarchive_recursive into 6 fns
+- chore: refactor unarchive_recursive as async
+- chore: refactor find_bsdtar_path as async
+- test: added wait_for_attachment_hooks
+- chore: add `node:` prefixes to builtins
+- chore: replace `plugin` with `this`
+- chore: refactors for brevity and clarity
+- chore: use modern `for` loops
+- chore: fixed typo in load_dissallowed_extns
+- style: prettier, remove line endings
+- remove done callbacks in synchronous tests (#44)
+
 ### [1.1.5] - 2025-04-02
 
 - fix: typo prevented unarchive zip from throwing errors #42
@@ -60,6 +74,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - es6 updates
 - backported changes from haraka/plugins/attachment.js
 
+
 [1.0.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.6
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.7
 [1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.0
@@ -68,3 +83,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.3]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.3
 [1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
 [1.1.5]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.5
+[1.2.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.2.0
