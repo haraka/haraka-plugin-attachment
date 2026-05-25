@@ -3,7 +3,7 @@
   "name": "haraka-plugin-attachment",
   "license": "MIT",
   "description": "A message attachment scanning plugin for Haraka",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "homepage": "https://github.com/haraka/haraka-plugin-attachment",
   "repository": {
     "type": "git",
@@ -23,29 +23,29 @@
     "lint:fix": "npx eslint *.js test --fix",
     "prettier": "npx prettier . --check",
     "prettier:fix": "npx prettier . --write --log-level=warn",
-    "test": "npx mocha --exit",
+    "test": "node --test --test-force-exit test/*.js",
     "versions": "npx npm-dep-mgr check",
     "versions:fix": "npx npm-dep-mgr update",
-    "test:coverage": "npx c8 --reporter=text --reporter=text-summary npm test",
+    "test:coverage": "node --test --test-force-exit --experimental-test-coverage --test-coverage-exclude=package.json --test-coverage-exclude=test/*.js test/*.js",
     "test:coverage:html": "npx c8 --reporter=html npm test",
     "test:coverage:lcov": "npx c8 --reporter=lcov npm test"
   },
   "dependencies": {
     "tmp": "^0.2.5",
     "haraka-constants": "^1.0.7",
-    "haraka-utils": "^1.1.4"
+    "haraka-utils": "^2.0.0"
   },
   "optionalDependencies": {},
   "devDependencies": {
     "@haraka/eslint-config": "^2.0.4",
-    "haraka-config": "^1.5.0",
-    "haraka-test-fixtures": "^1.4.0"
+    "haraka-config": "^1.6.2",
+    "haraka-test-fixtures": "^1.6.0"
   },
   "bugs": {
     "url": "https://github.com/haraka/haraka-plugin-attachment/issues"
   },
   "prettier": {
-    "printWidth": 90,
+    "printWidth": 110,
     "semi": false,
     "singleQuote": true
   }

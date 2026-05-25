@@ -4,6 +4,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.2.1] - 2026-05-24
+
+- change: test runner is now node:test
+- fix(security): cap cumulative decompressed bytes, default 100 MiB
+- fix(security): cap cumulative entry count, default 1000
+- fix: `check_attachments` walks the full MIME tree so `ctype` rules apply to deeply nested multiparts
+- fix: nesting depth now increments once per nested archive (was twice per level)
+- doc(README): full-MIME coverage, advisory nature of `ctype` rules, `max_depth` semantics, and new options
+
 ### [1.2.0] - 2026-03-18
 
 - chore: refactor unarchive_recursive into 6 fns
@@ -74,7 +83,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - es6 updates
 - backported changes from haraka/plugins/attachment.js
 
-
 [1.0.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.6
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.7
 [1.1.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.0
@@ -84,3 +92,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
 [1.1.5]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.5
 [1.2.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.2.0
+[1.2.1]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.2.1

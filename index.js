@@ -58,6 +58,10 @@ exports.load_attachment_ini = function () {
       ? this.cfg.main.archive_max_depth
       : 5
 
+  // Resource budgets for the recursive extraction.
+  this.cfg.archive.max_total_bytes = parseInt(this.cfg.archive.max_total_bytes, 10) || 100 * 1024 * 1024
+  this.cfg.archive.max_total_entries = parseInt(this.cfg.archive.max_total_entries, 10) || 1000
+
   this.load_disallowed_extns()
 }
 
@@ -75,9 +79,7 @@ exports.find_bsdtar_path = async function () {
 }
 
 exports.hook_init_master = exports.hook_init_child = function (next) {
-
-  this
-    .find_bsdtar_path()
+  this.find_bsdtar_path()
     .then((dir) => {
       this.logdebug(`found bsdtar in ${dir}`)
       this.bsdtar_path = `${dir}/bsdtar`
@@ -85,9 +87,7 @@ exports.hook_init_master = exports.hook_init_child = function (next) {
     })
     .catch(() => {
       archives_disabled = true
-      this.logwarn(
-        `This plugin requires the 'bsdtar' binary to extract filenames from archive files`,
-      )
+      this.logwarn(`This plugin requires the 'bsdtar' binary to extract filenames from archive files`)
       next()
     })
 }
@@ -228,7 +228,9 @@ exports.listArchive = async function (plugin, connection, in_file, ctx) {
       null,
       ctx,
     )
-    return String(lines).split(/\r?\n/).filter((fl) => fl)
+    return String(lines)
+      .split(/\r?\n/)
+      .filter((fl) => fl)
   } catch (e) {
     connection.logdebug(plugin, e)
     return []
@@ -259,8 +261,25 @@ exports.processFile = async function (plugin, connection, in_file, prefix, file,
 
   const t = await this.unpackArchive(plugin, connection, in_file, file, ctx)
 
+  // Account for decompressed bytes before recursing — short-circuit if
+  // the cumulative size has crossed the budget. The extraction itself
+  // already happened (timedOutSpawn → bsdtar), so this is a stop-the-
+  // recursion guard rather than a stop-the-write guard.
   try {
-    result = result.concat(await this.listFiles(plugin, connection, t.name, (prefix ? `${prefix}/` : '') + file, depth + 1, ctx))
+    const stat = await fs.promises.stat(t.name)
+    ctx.totalBytes = (ctx.totalBytes || 0) + stat.size
+    if (ctx.totalBytes > plugin.cfg.archive.max_total_bytes) {
+      ctx.bytesExceeded = true
+      return result
+    }
+  } catch (ignore) {
+    // tmpfile vanished or couldn't be stat'd — skip the budget check
+  }
+
+  try {
+    result = result.concat(
+      await this.listFiles(plugin, connection, t.name, (prefix ? `${prefix}/` : '') + file, depth + 1, ctx),
+    )
   } catch (e) {
     connection.logdebug(plugin, e)
   }
@@ -273,9 +292,14 @@ exports.listFiles = async function (plugin, connection, in_file, prefix, depth, 
   depth = depth || 0
 
   if (ctx.timeouted) {
-    connection.logdebug(plugin, `already timeouted, not going to process ${prefix ? `${prefix}/` : ''}${in_file}`)
+    connection.logdebug(
+      plugin,
+      `already timeouted, not going to process ${prefix ? `${prefix}/` : ''}${in_file}`,
+    )
     return result
   }
+
+  if (ctx.bytesExceeded || ctx.entriesExceeded) return result
 
   if (depth >= plugin.cfg.archive.max_depth) {
     ctx.depthExceeded = true
@@ -284,14 +308,26 @@ exports.listFiles = async function (plugin, connection, in_file, prefix, depth, 
   }
 
   const fls = await this.listArchive(plugin, connection, in_file, ctx)
+
+  // Cap the cumulative entry count across all nested archives.
+  ctx.totalEntries = (ctx.totalEntries || 0) + fls.length
+  if (ctx.totalEntries > plugin.cfg.archive.max_total_entries) {
+    ctx.entriesExceeded = true
+    connection.logdebug(plugin, `archive entry count exceeded with ${prefix ? `${prefix}/` : ''}${in_file}`)
+    return result
+  }
+
   await Promise.all(
     fls.map(async (file) => {
-      const output = await this.processFile(plugin, connection, in_file, prefix, file, depth + 1, ctx)
+      const output = await this.processFile(plugin, connection, in_file, prefix, file, depth, ctx)
       result.push(...output)
     }),
   )
 
-  connection.loginfo(plugin, `finish (${prefix ? `${prefix}/` : ''}${in_file}): count=${result.length} depth=${depth}`)
+  connection.loginfo(
+    plugin,
+    `finish (${prefix ? `${prefix}/` : ''}${in_file}): count=${result.length} depth=${depth}`,
+  )
   return result
 }
 
@@ -301,7 +337,16 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name) 
     return []
   }
 
-  const ctx = { tmpfiles: [], timeouted: false, encrypted: false, depthExceeded: false }
+  const ctx = {
+    tmpfiles: [],
+    timeouted: false,
+    encrypted: false,
+    depthExceeded: false,
+    bytesExceeded: false,
+    entriesExceeded: false,
+    totalBytes: 0,
+    totalEntries: 0,
+  }
 
   setTimeout(() => {
     ctx.timeouted = true
@@ -312,6 +357,14 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name) 
 
   if (ctx.timeouted) {
     const err = new Error('archive extraction timeouted')
+    err.files = files
+    throw err
+  } else if (ctx.bytesExceeded) {
+    const err = new Error('archive total bytes exceeded')
+    err.files = files
+    throw err
+  } else if (ctx.entriesExceeded) {
+    const err = new Error('archive total entries exceeded')
     err.files = files
     throw err
   } else if (ctx.depthExceeded) {
@@ -359,10 +412,7 @@ exports.compute_and_log_md5sum = function (connection, ctype, filename, stream) 
       },
       emit: true,
     })
-    connection.loginfo(
-      plugin,
-      `file="${filename}" ctype="${ctype}" md5=${digest} bytes=${bytes}`,
-    )
+    connection.loginfo(plugin, `file="${filename}" ctype="${ctype}" md5=${digest} bytes=${bytes}`)
   })
 }
 
@@ -444,10 +494,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
       stream.resume()
       return next()
     }
-    connection.logdebug(
-      plugin,
-      `Got tmpfile: attachment="${filename}" tmpfile="${fn}" fd=${fd}`,
-    )
+    connection.logdebug(plugin, `Got tmpfile: attachment="${filename}" tmpfile="${fn}" fd=${fd}`)
 
     const ws = fs.createWriteStream(fn)
     stream.pipe(ws)
@@ -469,8 +516,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
         .then((files) => {
           txn.notes.attachment_count--
           cleanup()
-          txn.notes.attachment_archive_files =
-            txn.notes.attachment_archive_files.concat(files)
+          txn.notes.attachment_archive_files = txn.notes.attachment_archive_files.concat(files)
           connection.resume()
           next()
         })
@@ -482,6 +528,16 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
             txn.notes.attachment_result = [
               DENY,
               'Message contains nested archives exceeding the maximum depth',
+            ]
+          } else if (error.message === 'archive total bytes exceeded') {
+            txn.notes.attachment_result = [
+              DENY,
+              'Message contains an archive whose decompressed size exceeds the limit',
+            ]
+          } else if (error.message === 'archive total entries exceeded') {
+            txn.notes.attachment_result = [
+              DENY,
+              'Message contains an archive whose entry count exceeds the limit',
             ]
           } else if (/Encrypted file is unsupported/i.test(error.message)) {
             if (!plugin.cfg.main.allow_encrypted_archives) {
@@ -496,8 +552,7 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
           }
 
           const files = error.files || []
-          txn.notes.attachment_archive_files =
-            txn.notes.attachment_archive_files.concat(files)
+          txn.notes.attachment_archive_files = txn.notes.attachment_archive_files.concat(files)
           connection.resume()
           next()
         })
@@ -538,6 +593,20 @@ exports.disallowed_extensions = function (txn) {
   return bad
 }
 
+// Walk every node in a MIME tree and push each part's Content-Type
+// (as captured by `re.ct`) into `out`.
+exports.collect_ctypes = function (connection, body, out) {
+  if (!body) return
+  const ct = body.header && this.re.ct.exec(body.header.get('content-type'))
+  if (ct) {
+    connection.logdebug(this, `found content type: ${ct[1]}`)
+    out.push(ct[1])
+  }
+  if (body.children) {
+    for (const child of body.children) this.collect_ctypes(connection, child, out)
+  }
+}
+
 exports.check_attachments = function (next, connection) {
   const txn = connection?.transaction
   if (!txn) return next()
@@ -550,26 +619,8 @@ exports.check_attachments = function (next, connection) {
 
   const ctypes = txn.notes.attachment_ctypes
 
-  // Add in any content type from message body
-  const body = txn.body
-  let body_ct
-  if (body && (body_ct = this.re.ct.exec(body.header.get('content-type')))) {
-    connection.logdebug(this, `found content type: ${body_ct[1]}`)
-    ctypes.push(body_ct[1])
-  }
-  // MIME parts
-  if (body && body.children) {
-    for (let c = 0; c < body.children.length; c++) {
-      let child_ct
-      if (
-        body.children[c] &&
-        (child_ct = this.re.ct.exec(body.children[c].header.get('content-type')))
-      ) {
-        connection.logdebug(this, `found content type: ${child_ct[1]}`)
-        ctypes.push(child_ct[1])
-      }
-    }
-  }
+  // Walk the full MIME tree (body + all nested children).
+  this.collect_ctypes(connection, txn.body, ctypes)
 
   const bad_extn = this.disallowed_extensions(txn)
   if (bad_extn) {
@@ -578,30 +629,21 @@ exports.check_attachments = function (next, connection) {
 
   const ctypes_result = this.check_items_against_regexps(ctypes, this.re.ctype)
   if (ctypes_result) {
-    connection.loginfo(
-      this,
-      `match ctype="${ctypes_result[0]}" regexp=/${ctypes_result[1]}/`,
-    )
+    connection.loginfo(this, `match ctype="${ctypes_result[0]}" regexp=/${ctypes_result[1]}/`)
     return next(DENY, `Message contains unacceptable content type (${ctypes_result[0]})`)
   }
 
   const files = txn.notes.attachment_files
   const files_result = this.check_items_against_regexps(files, this.re.file)
   if (files_result) {
-    connection.loginfo(
-      this,
-      `match file="${files_result[0]}" regexp=/${files_result[1]}/`,
-    )
+    connection.loginfo(this, `match file="${files_result[0]}" regexp=/${files_result[1]}/`)
     return next(DENY, `Message contains unacceptable attachment (${files_result[0]})`)
   }
 
   const archive_files = txn.notes.attachment_archive_files
   const archives_result = this.check_items_against_regexps(archive_files, this.re.archive)
   if (archives_result) {
-    connection.loginfo(
-      this,
-      `match file="${archives_result[0]}" regexp=/${archives_result[1]}/`,
-    )
+    connection.loginfo(this, `match file="${archives_result[0]}" regexp=/${archives_result[1]}/`)
     return next(DENY, `Message contains unacceptable attachment (${archives_result[0]})`)
   }
 
