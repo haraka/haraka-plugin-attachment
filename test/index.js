@@ -1,37 +1,40 @@
 'use strict'
 
-const assert = require('assert')
+const assert = require('node:assert')
 const fs = require('fs')
 const path = require('path')
+const { describe, it, beforeEach } = require('node:test')
 
 const fixtures = require('haraka-test-fixtures')
 
 const attach = new fixtures.plugin('index')
 
-function _set_up(done) {
-  this.plugin = new fixtures.plugin('attachment')
-  this.plugin.cfg = {}
-  this.plugin.cfg.timeout = 10
+let plugin, connection, directory
 
-  this.connection = fixtures.connection.createConnection()
-  this.connection.init_transaction()
+const _set_up = (t, done) => {
+  plugin = new fixtures.plugin('attachment')
+  plugin.cfg = {}
+  plugin.cfg.timeout = 10
 
-  this.connection.logdebug = function (where, message) {
+  connection = fixtures.connection.createConnection()
+  connection.init_transaction()
+
+  connection.logdebug = function (where, message) {
     if (process.env.DEBUG) console.log(message)
   }
-  this.connection.loginfo = function (where, message) {
+  connection.loginfo = function (where, message) {
     console.log(message)
   }
 
-  this.directory = path.resolve(__dirname, 'fixtures')
+  directory = path.resolve(__dirname, 'fixtures')
 
   // finds bsdtar
-  this.plugin.register()
-  this.plugin.hook_init_master(done)
+  plugin.register()
+  plugin.hook_init_master(done)
 }
 
-describe('options_to_object', function () {
-  it('converts string to object', function () {
+describe('options_to_object', () => {
+  it('converts string to object', () => {
     const expected = { gz: true, zip: true }
     assert.deepEqual(expected, attach.options_to_object('gz zip'))
     assert.deepEqual(expected, attach.options_to_object('gz,zip'))
@@ -39,16 +42,16 @@ describe('options_to_object', function () {
   })
 })
 
-describe('options_to_object regression', function () {
-  it('should split on all whitespace, not just the first', function () {
+describe('options_to_object regression', () => {
+  it('should split on all whitespace, not just the first', () => {
     const input = 'zip   gz   rar'
     const result = attach.options_to_object(input)
     assert.deepEqual(result, { zip: true, gz: true, rar: true })
   })
 })
 
-describe('load_disallowed_extns', function () {
-  it('loads comma separated options', function () {
+describe('load_disallowed_extns', () => {
+  it('loads comma separated options', () => {
     attach.cfg = { main: { disallowed_extensions: 'exe,scr' } }
     attach.load_disallowed_extns()
 
@@ -56,7 +59,7 @@ describe('load_disallowed_extns', function () {
     assert.ok(attach.re.bad_extn.test('bad.scr'))
   })
 
-  it('loads space separated options', function () {
+  it('loads space separated options', () => {
     attach.cfg = { main: { disallowed_extensions: 'dll tnef' } }
     attach.load_disallowed_extns()
     assert.ok(attach.re.bad_extn)
@@ -64,18 +67,18 @@ describe('load_disallowed_extns', function () {
   })
 })
 
-describe('file_extension', function () {
-  it('returns a file extension from a filename', function () {
+describe('file_extension', () => {
+  it('returns a file extension from a filename', () => {
     assert.equal('ext', attach.file_extension('file.ext'))
   })
 
-  it('returns empty string for no extension', function () {
+  it('returns empty string for no extension', () => {
     assert.equal('', attach.file_extension('file'))
   })
 })
 
-describe('disallowed_extensions', function () {
-  it('blocks filename extensions in attachment_files', function () {
+describe('disallowed_extensions', () => {
+  it('blocks filename extensions in attachment_files', () => {
     attach.cfg = { main: { disallowed_extensions: 'exe;scr' } }
     attach.load_disallowed_extns()
 
@@ -90,7 +93,7 @@ describe('disallowed_extensions', function () {
     assert.equal('exe', attach.disallowed_extensions(txn))
   })
 
-  it('blocks filename extensions in archive_files', function () {
+  it('blocks filename extensions in archive_files', () => {
     attach.cfg = { main: { disallowed_extensions: 'dll tnef' } }
     attach.load_disallowed_extns()
 
@@ -110,72 +113,65 @@ describe('disallowed_extensions', function () {
   })
 })
 
-describe('load_n_compile_re', function () {
-  it('loads regex lines from file, compiles to array', function () {
+describe('load_n_compile_re', () => {
+  it('loads regex lines from file, compiles to array', () => {
     attach.load_n_compile_re('test', 'attachment.filename.regex')
     assert.ok(attach.re.test)
     assert.ok(attach.re.test[0].test('foo.exe'))
   })
 })
 
-describe('check_items_against_regexps', function () {
-  it('positive', function () {
+describe('check_items_against_regexps', () => {
+  it('positive', () => {
     attach.load_n_compile_re('test', 'attachment.filename.regex')
 
     assert.ok(attach.check_items_against_regexps(['file.exe'], attach.re.test))
-    assert.ok(
-      attach.check_items_against_regexps(['fine.pdf', 'awful.exe'], attach.re.test),
-    )
+    assert.ok(attach.check_items_against_regexps(['fine.pdf', 'awful.exe'], attach.re.test))
   })
 
-  it('negative', function () {
+  it('negative', () => {
     attach.load_n_compile_re('test', 'attachment.filename.regex')
 
     assert.ok(!attach.check_items_against_regexps(['file.png'], attach.re.test))
-    assert.ok(
-      !attach.check_items_against_regexps(
-        ['fine.pdf', 'godiva.chocolate'],
-        attach.re.test,
-      ),
-    )
+    assert.ok(!attach.check_items_against_regexps(['fine.pdf', 'godiva.chocolate'], attach.re.test))
   })
 })
 
-describe('isArchive', function () {
-  it('zip', function () {
+describe('isArchive', () => {
+  it('zip', () => {
     attach.load_attachment_ini()
     // console.log(attach.cfg.archive);
     assert.equal(true, attach.isArchive('.zip'))
     assert.equal(true, attach.isArchive('zip'))
   })
 
-  it('png', function () {
+  it('png', () => {
     attach.load_attachment_ini()
     assert.equal(false, attach.isArchive('.png'))
     assert.equal(false, attach.isArchive('png'))
   })
 
-  it('returns false for undefined archive config', function () {
+  it('returns false for undefined archive config', () => {
     const plugin = new fixtures.plugin('attachment')
     plugin.cfg = { archive: { exts: {} } }
     assert.equal(plugin.isArchive('foo'), false)
   })
 
-  it('returns true for extension in exts', function () {
+  it('returns true for extension in exts', () => {
     const plugin = new fixtures.plugin('attachment')
     plugin.cfg = { archive: { exts: { zip: true } } }
     assert.equal(plugin.isArchive('zip'), true)
   })
 
-  it('returns true for .ext in exts', function () {
+  it('returns true for .ext in exts', () => {
     const plugin = new fixtures.plugin('attachment')
     plugin.cfg = { archive: { exts: { zip: true } } }
     assert.equal(plugin.isArchive('.zip'), true)
   })
 })
 
-describe('content_type', function () {
-  it('returns unknown/unknown for invalid ctype', function () {
+describe('content_type', () => {
+  it('returns unknown/unknown for invalid ctype', () => {
     const plugin = new fixtures.plugin('attachment')
     const connection = {
       transaction: { notes: { attachment_ctypes: [] } },
@@ -187,45 +183,33 @@ describe('content_type', function () {
   })
 })
 
-describe('unarchive_recursive', function () {
+describe('unarchive_recursive', () => {
   beforeEach(_set_up)
-  it('3layers', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/3layer.zip`,
-      '3layer.zip',
-    )
+  it('3layers', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/3layer.zip`, '3layer.zip')
     assert.equal(files.length, 3)
   })
 
-  it('empty.gz', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/empty.gz`,
-      'empty.gz',
-    )
+  it('empty.gz', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/empty.gz`, 'empty.gz')
     assert.equal(files.length, 0)
   })
 
-  it('encrypt.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/encrypt.zip`,
-      'encrypt.zip',
-    )
+  it('encrypt.zip', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/encrypt.zip`, 'encrypt.zip')
     // we see files list in encrypted zip, but we can't extract so no error here
     assert.equal(files?.length, 1)
   })
 
-  it('encrypt-recursive.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
+  it('encrypt-recursive.zip', async () => {
+    if (!plugin.bsdtar_path) return
     try {
-      await this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/encrypt-recursive.zip`,
+      await plugin.unarchive_recursive(
+        connection,
+        `${directory}/encrypt-recursive.zip`,
         'encrypt-recursive.zip',
       )
       throw new Error('expected encrypted error')
@@ -237,66 +221,50 @@ describe('unarchive_recursive', function () {
     }
   })
 
-  it('gz-in-zip.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/gz-in-zip.zip`,
-      'gz-in-zip.zip',
-    )
+  it('gz-in-zip.zip', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/gz-in-zip.zip`, 'gz-in-zip.zip')
     // gz is not listable in bsdtar
     assert.equal(files.length, 1)
   })
 
-  it('invalid.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/invalid.zip`,
-      'invalid.zip',
-    )
+  it('invalid.zip', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/invalid.zip`, 'invalid.zip')
     // invalid zip is assumed to be just file, so error of bsdtar is ignored
     assert.equal(files.length, 0)
   })
 
-  it('invalid-in-valid.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/invalid-in-valid.zip`,
+  it('invalid-in-valid.zip', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(
+      connection,
+      `${directory}/invalid-in-valid.zip`,
       'invalid-in-valid.zip',
     )
     assert.equal(files.length, 1)
   })
 
-  it('password.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/password.zip`,
-      'password.zip',
-    )
+  it('password.zip', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/password.zip`, 'password.zip')
     // we see files list in encrypted zip, but we can't extract so no error here
     assert.equal(files.length, 1)
   })
 
-  it('valid.zip', async function () {
-    if (!this.plugin.bsdtar_path) return
-    const files = await this.plugin.unarchive_recursive(
-      this.connection,
-      `${this.directory}/valid.zip`,
-      'valid.zip',
-    )
+  it('valid.zip', async () => {
+    if (!plugin.bsdtar_path) return
+    const files = await plugin.unarchive_recursive(connection, `${directory}/valid.zip`, 'valid.zip')
     assert.equal(files.length, 1)
   })
 
-  it('timeout', async function () {
-    if (!this.plugin.bsdtar_path) return
-    this.plugin.cfg.timeout = 0
+  it('timeout', async () => {
+    if (!plugin.bsdtar_path) return
+    plugin.cfg.timeout = 0
     try {
-      await this.plugin.unarchive_recursive(
-        this.connection,
-        `${this.directory}/encrypt-recursive.zip`,
+      await plugin.unarchive_recursive(
+        connection,
+        `${directory}/encrypt-recursive.zip`,
         'encrypt-recursive.zip',
       )
       throw new Error('expected timeout error')
@@ -308,15 +276,15 @@ describe('unarchive_recursive', function () {
   })
 })
 
-describe('start_attachment', function () {
+describe('start_attachment', () => {
   beforeEach(_set_up)
 
-  it('finds an message attachment', async function () {
-    // const pi = this.plugin
-    const txn = this.connection.transaction
+  it('finds an message attachment', async () => {
+    // const pi = plugin
+    const txn = connection.transaction
 
     await new Promise((resolve) => {
-      this.plugin.hook_data(function () {
+      plugin.hook_data(function () {
         // console.log(pi)
         const msgPath = path.join(__dirname, 'fixtures', 'haraka-icon-attach.eml')
         // console.log(`msgPath: ${msgPath}`)
@@ -330,20 +298,20 @@ describe('start_attachment', function () {
         txn.ensure_body()
 
         // console.dir(txn.message_stream)
-        assert.deepEqual(
-          txn.message_stream.idx['Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'],
-          { start: 5232, end: 6384 },
-        )
+        assert.deepEqual(txn.message_stream.idx['Apple-Mail=_65C16661-5FA8-4757-B627-13E55C40C8D7'], {
+          start: 5232,
+          end: 6384,
+        })
         resolve()
-      }, this.connection)
+      }, connection)
     })
   })
 })
 
-describe('wait_for_attachment_hooks and start_attachment (md5 only)', function () {
+describe('wait_for_attachment_hooks and start_attachment (md5 only)', () => {
   // beforeEach(_set_up)
 
-  it('wait_for_attachment_hooks sets attachment_next when count > 0', function (done) {
+  it('wait_for_attachment_hooks sets attachment_next when count > 0', (t, done) => {
     const plugin = new fixtures.plugin('attachment')
     const connection = fixtures.connection.createConnection()
     connection.init_transaction()
@@ -361,7 +329,7 @@ describe('wait_for_attachment_hooks and start_attachment (md5 only)', function (
     })
   })
 
-  it('start_attachment computes md5 and records attachment when no filename', function (done) {
+  it('start_attachment computes md5 and records attachment when no filename', (t, done) => {
     const plugin = new fixtures.plugin('attachment')
     const connection = fixtures.connection.createConnection()
     connection.init_transaction()
@@ -392,5 +360,213 @@ describe('wait_for_attachment_hooks and start_attachment (md5 only)', function (
         done(e)
       }
     }, 20)
+  })
+})
+
+describe('check_attachments', () => {
+  const constants = require('haraka-constants')
+
+  const mkPlugin = (re = {}) => {
+    const p = new fixtures.plugin('attachment')
+    p.cfg = { main: {} }
+    p.re = {
+      ct: /^([^/]+\/[^;\r\n ]+)/,
+      ctype: [],
+      file: [],
+      archive: [],
+      ...re,
+    }
+    return p
+  }
+
+  const mkConn = (notes = {}) => {
+    const c = fixtures.connection.createConnection()
+    c.init_transaction()
+    Object.assign(c.transaction.notes, {
+      attachment_ctypes: [],
+      attachment_files: [],
+      attachment_archive_files: [],
+      ...notes,
+    })
+    c.logdebug = () => {}
+    c.loginfo = () => {}
+    return c
+  }
+
+  const run = (p, c) => new Promise((res) => p.check_attachments((...a) => res(a), c))
+
+  it('no transaction -> next()', async () => {
+    assert.deepEqual(await run(mkPlugin(), {}), [])
+  })
+
+  it('relays a stored attachment_result', async () => {
+    const c = mkConn({ attachment_result: [constants.DENYSOFT, 'boom'] })
+    assert.deepEqual(await run(mkPlugin(), c), [constants.DENYSOFT, 'boom'])
+  })
+
+  it('DENYs a disallowed file extension', async () => {
+    const p = mkPlugin({ bad_extn: /\.(exe)$/i })
+    const c = mkConn({ attachment_files: ['resume.exe'] })
+    const [code, msg] = await run(p, c)
+    assert.equal(code, constants.DENY)
+    assert.match(msg, /disallowed file extension \(exe\)/)
+  })
+
+  it('DENYs an unacceptable content type', async () => {
+    const p = mkPlugin({ ctype: [/application\/x-bad/] })
+    const c = mkConn({ attachment_ctypes: ['application/x-bad'] })
+    const [code, msg] = await run(p, c)
+    assert.equal(code, constants.DENY)
+    assert.match(msg, /unacceptable content type/)
+  })
+
+  it('DENYs an unacceptable filename', async () => {
+    const p = mkPlugin({ file: [/\.scr$/] })
+    const c = mkConn({ attachment_files: ['photo.scr'] })
+    const [code, msg] = await run(p, c)
+    assert.equal(code, constants.DENY)
+    assert.match(msg, /unacceptable attachment \(photo\.scr\)/)
+  })
+
+  it('DENYs an unacceptable archived filename', async () => {
+    const p = mkPlugin({ archive: [/payload\.js$/] })
+    const c = mkConn({ attachment_archive_files: ['a/payload.js'] })
+    const [code] = await run(p, c)
+    assert.equal(code, constants.DENY)
+  })
+
+  it('extracts content types from the body and MIME children', async () => {
+    const p = mkPlugin({ ctype: [/application\/zip/] })
+    const c = mkConn()
+    c.transaction.body = {
+      header: { get: () => 'application/zip; charset=x' },
+      children: [{ header: { get: () => 'image/png' } }],
+    }
+    const [code] = await run(p, c)
+    assert.equal(code, constants.DENY) // matched the body content-type
+  })
+
+  it('passes a clean message', async () => {
+    const c = mkConn({
+      attachment_ctypes: ['text/plain'],
+      attachment_files: ['notes.txt'],
+    })
+    assert.deepEqual(await run(mkPlugin(), c), [])
+  })
+})
+
+describe('hook_data / content_type / start_attachment', () => {
+  it('hook_data with no transaction calls next()', async () => {
+    const p = new fixtures.plugin('attachment')
+    const args = await new Promise((res) => p.hook_data((...a) => res(a), {}))
+    assert.deepEqual(args, [])
+  })
+
+  it('hook_data initializes txn notes and registers the hook', async () => {
+    const p = new fixtures.plugin('attachment')
+    const c = fixtures.connection.createConnection()
+    c.init_transaction()
+    let hooked = false
+    c.transaction.attachment_hooks = () => (hooked = true)
+    await new Promise((res) => p.hook_data((...a) => res(a), c))
+    assert.equal(c.transaction.parse_body, 1)
+    assert.deepEqual(c.transaction.notes.attachment_ctypes, [])
+    assert.ok(hooked)
+  })
+
+  it('content_type records a recognized type', () => {
+    const p = new fixtures.plugin('attachment')
+    p.re = { ct: /^([^/]+\/[^;\r\n ]+)/ }
+    const c = {
+      transaction: { notes: { attachment_ctypes: [] } },
+      logdebug: () => {},
+    }
+    assert.equal(p.content_type(c, 'application/zip; charset=utf-8'), 'application/zip')
+    assert.deepEqual(c.transaction.notes.attachment_ctypes, ['application/zip'])
+  })
+
+  it('start_attachment records a non-archive filename', () => {
+    const p = new fixtures.plugin('attachment')
+    p.cfg = { main: {} }
+    p.compute_and_log_md5sum = () => {}
+    const c = fixtures.connection.createConnection()
+    c.init_transaction()
+    c.transaction.notes.attachment_files = []
+    c.logdebug = () => {}
+    p.start_attachment(c, 'text/plain', 'readme.txt', null, {})
+    assert.deepEqual(c.transaction.notes.attachment_files, ['readme.txt'])
+  })
+})
+
+describe('start_attachment archive extraction', () => {
+  beforeEach(_set_up)
+
+  it('extracts a real zip via the attachment pipeline', (t, done) => {
+    if (!plugin.bsdtar_path) return done() // bsdtar not installed
+    const txn = connection.transaction
+    txn.notes.attachment_count = 0
+    txn.notes.attachment_files = []
+    txn.notes.attachment_archive_files = []
+    connection.pause = () => {}
+    connection.resume = () => {}
+    plugin.compute_and_log_md5sum = () => {}
+    txn.notes.attachment_next = () => {
+      try {
+        assert.ok(txn.notes.attachment_archive_files.length >= 1, 'archive contents were listed')
+        done()
+      } catch (e) {
+        done(e)
+      }
+    }
+    const stream = fs.createReadStream(`${directory}/valid.zip`)
+    plugin.start_attachment(connection, 'application/zip', 'valid.zip', null, stream)
+  })
+
+  it('DENYs when archive nesting exceeds max_depth', (t, done) => {
+    if (!plugin.bsdtar_path) return done()
+    const txn = connection.transaction
+    txn.notes.attachment_count = 0
+    txn.notes.attachment_files = []
+    txn.notes.attachment_archive_files = []
+    plugin.cfg.archive.max_depth = 1 // 3layer.zip nests deeper
+    connection.pause = () => {}
+    connection.resume = () => {}
+    plugin.compute_and_log_md5sum = () => {}
+    txn.notes.attachment_next = () => {
+      try {
+        assert.ok(Array.isArray(txn.notes.attachment_result))
+        assert.equal(txn.notes.attachment_result[0], require('haraka-constants').DENY)
+        done()
+      } catch (e) {
+        done(e)
+      }
+    }
+    const stream = fs.createReadStream(`${directory}/3layer.zip`)
+    plugin.start_attachment(connection, 'application/zip', '3layer.zip', null, stream)
+  })
+})
+
+describe('config & init branches', () => {
+  it('hook_init_master disables archives when bsdtar is absent', (t, done) => {
+    const p = new fixtures.plugin('attachment')
+    p.find_bsdtar_path = async () => {
+      throw new Error('nope')
+    }
+    p.hook_init_master(() => {
+      assert.equal(p.bsdtar_path, undefined)
+      done()
+    })
+  })
+
+  it('load_attachment_ini honors legacy archive_extensions config', () => {
+    const p = new fixtures.plugin('attachment')
+    p.config.get = () => ({
+      main: { archive_extensions: 'zip rar', archive_max_depth: 9 },
+      archive: {},
+    })
+    p.load_attachment_ini()
+    assert.equal(p.cfg.archive.exts.zip, true)
+    assert.equal(p.cfg.archive.exts.rar, true)
+    assert.equal(p.cfg.archive.max_depth, 9)
   })
 })

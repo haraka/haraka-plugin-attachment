@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+- change: test runner is now node:test
+
 ### [1.2.0] - 2026-03-18
 
 - chore: refactor unarchive_recursive into 6 fns
@@ -73,7 +75,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - finished converting tests to mocha, tests work again. Yay.
 - es6 updates
 - backported changes from haraka/plugins/attachment.js
-
 
 [1.0.6]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.6
 [1.0.7]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.0.7

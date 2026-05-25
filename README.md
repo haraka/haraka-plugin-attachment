@@ -24,9 +24,7 @@ At INFO level logging this plugin will output the filename and type of each atta
 ## Configuration
 
 - attachment.ini
-
   - default settings shown
-
   * timeout=30
 
     Timeout in seconds before the plugin will abort.

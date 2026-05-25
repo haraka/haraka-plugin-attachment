@@ -1,17 +1,18 @@
 'use strict'
 
-const assert = require('assert')
+const assert = require('node:assert')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
+const { describe, it, beforeEach } = require('node:test')
 
 const fixtures = require('haraka-test-fixtures')
 
-describe('internal helper functions', function () {
+describe('internal helper functions', () => {
   let plugin
   let connection
 
-  beforeEach(function () {
+  beforeEach(() => {
     plugin = new fixtures.plugin('attachment')
     // ensure tmp module is available for createTmp
     plugin.load_tmp_module()
@@ -26,7 +27,7 @@ describe('internal helper functions', function () {
     connection.loginfo = function () {}
   })
 
-  it('createTmp creates a temp file and returns fd/name', async function () {
+  it('createTmp creates a temp file and returns fd/name', async () => {
     if (!plugin) throw new Error('plugin missing')
     const t = await plugin.createTmp()
     assert.ok(t && t.name && typeof t.fd === 'number')
@@ -39,7 +40,7 @@ describe('internal helper functions', function () {
     fs.unlinkSync(t.name)
   })
 
-  it('timedOutSpawn resolves output and detects timeouts', async function () {
+  it('timedOutSpawn resolves output and detects timeouts', async () => {
     const ctx = { timeouted: false, encrypted: false }
     // quick command
     const out = await plugin.timedOutSpawn(
@@ -72,7 +73,7 @@ describe('internal helper functions', function () {
     }
   })
 
-  it('deleteTempFiles closes and removes temp files', function (done) {
+  it('deleteTempFiles closes and removes temp files', (t, done) => {
     const name = path.join(os.tmpdir(), `att-test-${Date.now()}`)
     const fd = fs.openSync(name, 'w')
     fs.writeSync(fd, 'x')
@@ -87,7 +88,7 @@ describe('internal helper functions', function () {
     }, 50)
   })
 
-  it('listFiles honors max depth and sets depthExceeded', async function () {
+  it('listFiles honors max depth and sets depthExceeded', async () => {
     plugin.cfg.archive.max_depth = 0
     const ctx = { tmpfiles: [], timeouted: false, encrypted: false, depthExceeded: false }
     const res = await plugin.listFiles(plugin, connection, '/dev/null', 'prefix', 0, ctx)
@@ -95,7 +96,7 @@ describe('internal helper functions', function () {
     assert.ok(ctx.depthExceeded)
   })
 
-  it('processFile returns filename for non-archive', async function () {
+  it('processFile returns filename for non-archive', async () => {
     const ctx = { tmpfiles: [], timeouted: false, encrypted: false, depthExceeded: false }
     const out = await plugin.processFile(plugin, connection, '/dev/null', '', 'file.txt', 0, ctx)
     assert.deepEqual(out, ['file.txt'])
