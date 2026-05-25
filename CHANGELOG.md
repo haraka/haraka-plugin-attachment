@@ -4,6 +4,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Unreleased
 
+### [1.2.1] - 2026-05-24
+
+#### Fixed
+
+- cap cumulative decompressed bytes, default 100 MiB
+
+#### Changed
+
+- v1.2.1
+
+#### Other
+
+- change: test runner is now node:test
+
+
 - change: test runner is now node:test
 - fix(security): cap cumulative decompressed bytes, default 100 MiB
 - fix(security): cap cumulative entry count, default 1000
@@ -90,3 +105,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 [1.1.4]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.4
 [1.1.5]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.1.5
 [1.2.0]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.2.0
+[1.2.1]: https://github.com/haraka/haraka-plugin-attachment/releases/tag/v1.2.1
