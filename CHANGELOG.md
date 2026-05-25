@@ -6,18 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### [1.2.1] - 2026-05-24
 
-#### Fixed
-
-- cap cumulative decompressed bytes, default 100 MiB
-
-#### Changed
-
-- v1.2.1
-
-#### Other
-
-- change: test runner is now node:test
-
 - change: test runner is now node:test
 - fix(security): cap cumulative decompressed bytes, default 100 MiB
 - fix(security): cap cumulative entry count, default 1000
