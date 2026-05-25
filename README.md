@@ -3,11 +3,11 @@
 [![Build Status][ci-img]][ci-url]
 [![Code Climate][clim-img]][clim-url]
 
-This plugin allows you to reject messages based on Content-Type within the message or any MIME parts or on the filename of any attachments.
+This plugin allows you to reject messages based on Content-Type anywhere in the MIME tree (the body and every nested part are walked) or on the filename of any attachment, including filenames inside expanded archives.
 
 ## Limitations
 
-This plugin cannot detect forged MIME types where the sender is lying about the type. The type is not confirmed in any way currently.
+The `ctype` regex rules are advisory: they match against the `Content-Type` headers the sender supplied, and a sender can lie. No magic-byte / file-signature inspection is performed. For hard blocking, prefer `disallowed_extensions` and the `attachment.filename.regex` / `attachment.archive.filename.regex` lists, which match on the actual filenames (including filenames discovered inside archives).
 
 Encrypted archives that contain encrypted sub-archives cannot be expanded and will cause the plugin to reject the message.
 
@@ -37,8 +37,21 @@ At INFO level logging this plugin will output the filename and type of each atta
 
   * max_depth=5
 
-    The maximum level of nested archives that will be unpacked.
-    If this is exceeded the message will be rejected.
+    Maximum number of archive levels unpacked, counting the outermost
+    archive as level 0. With `max_depth=5`, archives at depths 0..4 are
+    unpacked and a 6th nested archive is rejected.
+
+  * max_total_bytes=104857600
+
+    Maximum total decompressed size, in bytes, summed across every
+    archive expanded for a single message. Default 100 MiB. When the
+    running total exceeds this budget the message is rejected.
+
+  * max_total_entries=1000
+
+    Maximum number of entries (files + directories) listed across every
+    archive expanded for a single message. Default 1000. When the running
+    total exceeds this budget the message is rejected.
 
     [archive]
 

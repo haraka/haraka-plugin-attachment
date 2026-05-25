@@ -58,6 +58,10 @@ exports.load_attachment_ini = function () {
       ? this.cfg.main.archive_max_depth
       : 5
 
+  // Resource budgets for the recursive extraction.
+  this.cfg.archive.max_total_bytes = parseInt(this.cfg.archive.max_total_bytes, 10) || 100 * 1024 * 1024
+  this.cfg.archive.max_total_entries = parseInt(this.cfg.archive.max_total_entries, 10) || 1000
+
   this.load_disallowed_extns()
 }
 
@@ -257,6 +261,21 @@ exports.processFile = async function (plugin, connection, in_file, prefix, file,
 
   const t = await this.unpackArchive(plugin, connection, in_file, file, ctx)
 
+  // Account for decompressed bytes before recursing — short-circuit if
+  // the cumulative size has crossed the budget. The extraction itself
+  // already happened (timedOutSpawn → bsdtar), so this is a stop-the-
+  // recursion guard rather than a stop-the-write guard.
+  try {
+    const stat = await fs.promises.stat(t.name)
+    ctx.totalBytes = (ctx.totalBytes || 0) + stat.size
+    if (ctx.totalBytes > plugin.cfg.archive.max_total_bytes) {
+      ctx.bytesExceeded = true
+      return result
+    }
+  } catch (ignore) {
+    // tmpfile vanished or couldn't be stat'd — skip the budget check
+  }
+
   try {
     result = result.concat(
       await this.listFiles(plugin, connection, t.name, (prefix ? `${prefix}/` : '') + file, depth + 1, ctx),
@@ -280,6 +299,8 @@ exports.listFiles = async function (plugin, connection, in_file, prefix, depth, 
     return result
   }
 
+  if (ctx.bytesExceeded || ctx.entriesExceeded) return result
+
   if (depth >= plugin.cfg.archive.max_depth) {
     ctx.depthExceeded = true
     connection.logdebug(plugin, `hit maximum depth with ${prefix ? `${prefix}/` : ''}${in_file}`)
@@ -287,9 +308,18 @@ exports.listFiles = async function (plugin, connection, in_file, prefix, depth, 
   }
 
   const fls = await this.listArchive(plugin, connection, in_file, ctx)
+
+  // Cap the cumulative entry count across all nested archives.
+  ctx.totalEntries = (ctx.totalEntries || 0) + fls.length
+  if (ctx.totalEntries > plugin.cfg.archive.max_total_entries) {
+    ctx.entriesExceeded = true
+    connection.logdebug(plugin, `archive entry count exceeded with ${prefix ? `${prefix}/` : ''}${in_file}`)
+    return result
+  }
+
   await Promise.all(
     fls.map(async (file) => {
-      const output = await this.processFile(plugin, connection, in_file, prefix, file, depth + 1, ctx)
+      const output = await this.processFile(plugin, connection, in_file, prefix, file, depth, ctx)
       result.push(...output)
     }),
   )
@@ -307,7 +337,16 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name) 
     return []
   }
 
-  const ctx = { tmpfiles: [], timeouted: false, encrypted: false, depthExceeded: false }
+  const ctx = {
+    tmpfiles: [],
+    timeouted: false,
+    encrypted: false,
+    depthExceeded: false,
+    bytesExceeded: false,
+    entriesExceeded: false,
+    totalBytes: 0,
+    totalEntries: 0,
+  }
 
   setTimeout(() => {
     ctx.timeouted = true
@@ -318,6 +357,14 @@ exports.unarchive_recursive = async function (connection, f, archive_file_name) 
 
   if (ctx.timeouted) {
     const err = new Error('archive extraction timeouted')
+    err.files = files
+    throw err
+  } else if (ctx.bytesExceeded) {
+    const err = new Error('archive total bytes exceeded')
+    err.files = files
+    throw err
+  } else if (ctx.entriesExceeded) {
+    const err = new Error('archive total entries exceeded')
     err.files = files
     throw err
   } else if (ctx.depthExceeded) {
@@ -482,6 +529,16 @@ exports.start_attachment = function (connection, ctype, filename, body, stream) 
               DENY,
               'Message contains nested archives exceeding the maximum depth',
             ]
+          } else if (error.message === 'archive total bytes exceeded') {
+            txn.notes.attachment_result = [
+              DENY,
+              'Message contains an archive whose decompressed size exceeds the limit',
+            ]
+          } else if (error.message === 'archive total entries exceeded') {
+            txn.notes.attachment_result = [
+              DENY,
+              'Message contains an archive whose entry count exceeds the limit',
+            ]
           } else if (/Encrypted file is unsupported/i.test(error.message)) {
             if (!plugin.cfg.main.allow_encrypted_archives) {
               txn.notes.attachment_result = [DENY, 'Message contains encrypted archive']
@@ -536,6 +593,20 @@ exports.disallowed_extensions = function (txn) {
   return bad
 }
 
+// Walk every node in a MIME tree and push each part's Content-Type
+// (as captured by `re.ct`) into `out`.
+exports.collect_ctypes = function (connection, body, out) {
+  if (!body) return
+  const ct = body.header && this.re.ct.exec(body.header.get('content-type'))
+  if (ct) {
+    connection.logdebug(this, `found content type: ${ct[1]}`)
+    out.push(ct[1])
+  }
+  if (body.children) {
+    for (const child of body.children) this.collect_ctypes(connection, child, out)
+  }
+}
+
 exports.check_attachments = function (next, connection) {
   const txn = connection?.transaction
   if (!txn) return next()
@@ -548,23 +619,8 @@ exports.check_attachments = function (next, connection) {
 
   const ctypes = txn.notes.attachment_ctypes
 
-  // Add in any content type from message body
-  const body = txn.body
-  let body_ct
-  if (body && (body_ct = this.re.ct.exec(body.header.get('content-type')))) {
-    connection.logdebug(this, `found content type: ${body_ct[1]}`)
-    ctypes.push(body_ct[1])
-  }
-  // MIME parts
-  if (body && body.children) {
-    for (let c = 0; c < body.children.length; c++) {
-      let child_ct
-      if (body.children[c] && (child_ct = this.re.ct.exec(body.children[c].header.get('content-type')))) {
-        connection.logdebug(this, `found content type: ${child_ct[1]}`)
-        ctypes.push(child_ct[1])
-      }
-    }
-  }
+  // Walk the full MIME tree (body + all nested children).
+  this.collect_ctypes(connection, txn.body, ctypes)
 
   const bad_extn = this.disallowed_extensions(txn)
   if (bad_extn) {

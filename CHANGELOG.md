@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Unreleased
 
 - change: test runner is now node:test
+- fix(security): cap cumulative decompressed bytes, default 100 MiB
+- fix(security): cap cumulative entry count, default 1000
+- fix: `check_attachments` walks the full MIME tree so `ctype` rules apply to deeply nested multiparts
+- fix: nesting depth now increments once per nested archive (was twice per level)
+- doc(README): full-MIME coverage, advisory nature of `ctype` rules, `max_depth` semantics, and new options
 
 ### [1.2.0] - 2026-03-18
 

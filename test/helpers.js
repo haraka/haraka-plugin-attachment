@@ -101,4 +101,48 @@ describe('internal helper functions', () => {
     const out = await plugin.processFile(plugin, connection, '/dev/null', '', 'file.txt', 0, ctx)
     assert.deepEqual(out, ['file.txt'])
   })
+
+  // Audit C3: nesting depth should increment exactly once per nested
+  // archive (not twice via the listFiles→processFile cycle).
+  it('listFiles → processFile preserves caller depth (no double-increment)', async () => {
+    plugin.cfg.archive.max_depth = 5
+    const ctx = {
+      tmpfiles: [],
+      timeouted: false,
+      encrypted: false,
+      depthExceeded: false,
+    }
+    // Stub the archive-shelling helpers so we don't need real bsdtar:
+    // a single fake entry, then processFile reports the depth it saw.
+    const depthsSeen = []
+    plugin.listArchive = async () => ['inner.txt']
+    plugin.processFile = async (_p, _c, _in, _pre, _file, depth) => {
+      depthsSeen.push(depth)
+      return []
+    }
+    await plugin.listFiles(plugin, connection, '/dev/null', '', 3, ctx)
+    assert.deepEqual(depthsSeen, [3], `expected processFile depth=3, got ${depthsSeen}`)
+  })
+
+  // Audit S1: cumulative entry count across every nested archive must
+  // be bounded; once exceeded, listFiles stops recursing.
+  it('listFiles aborts when totalEntries crosses max_total_entries', async () => {
+    plugin.cfg.archive.max_depth = 5
+    plugin.cfg.archive.max_total_entries = 2
+    const ctx = {
+      tmpfiles: [],
+      timeouted: false,
+      encrypted: false,
+      depthExceeded: false,
+      bytesExceeded: false,
+      entriesExceeded: false,
+      totalBytes: 0,
+      totalEntries: 0,
+    }
+    plugin.listArchive = async () => ['a', 'b', 'c', 'd']
+    plugin.processFile = async () => []
+    await plugin.listFiles(plugin, connection, '/dev/null', '', 0, ctx)
+    assert.ok(ctx.entriesExceeded, 'entriesExceeded should be set')
+    assert.equal(ctx.totalEntries, 4)
+  })
 })

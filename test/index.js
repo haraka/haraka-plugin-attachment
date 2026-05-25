@@ -446,6 +446,29 @@ describe('check_attachments', () => {
     assert.equal(code, constants.DENY) // matched the body content-type
   })
 
+  it('walks nested multiparts (audit C1) — finds ctype 3 levels deep', async () => {
+    const p = mkPlugin({ ctype: [/application\/x-bad/] })
+    const c = mkConn()
+    // multipart/mixed > multipart/alternative > multipart/related > [bad]
+    c.transaction.body = {
+      header: { get: () => 'multipart/mixed' },
+      children: [
+        {
+          header: { get: () => 'multipart/alternative' },
+          children: [
+            {
+              header: { get: () => 'multipart/related' },
+              children: [{ header: { get: () => 'application/x-bad' } }],
+            },
+          ],
+        },
+      ],
+    }
+    const [code, msg] = await run(p, c)
+    assert.equal(code, constants.DENY)
+    assert.match(msg, /unacceptable content type \(application\/x-bad\)/)
+  })
+
   it('passes a clean message', async () => {
     const c = mkConn({
       attachment_ctypes: ['text/plain'],
