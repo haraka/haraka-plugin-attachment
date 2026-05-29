@@ -1,7 +1,6 @@
 # haraka-plugin-attachment
 
-[![Build Status][ci-img]][ci-url]
-[![Code Climate][clim-img]][clim-url]
+[![Build][ci-img]][ci-url] [![Cover][cov-img]][cov-url] [![Qlty][qlty-img]][qlty-url]
 
 This plugin allows you to reject messages based on Content-Type anywhere in the MIME tree (the body and every nested part are walked) or on the filename of any attachment, including filenames inside expanded archives.
 
@@ -85,5 +84,7 @@ At INFO level logging this plugin will output the filename and type of each atta
 
 [ci-img]: https://github.com/haraka/haraka-plugin-attachment/actions/workflows/ci.yml/badge.svg
 [ci-url]: https://github.com/haraka/haraka-plugin-attachment/actions/workflows/ci.yml
-[clim-img]: https://codeclimate.com/github/haraka/haraka-plugin-attachment/badges/gpa.svg
-[clim-url]: https://codeclimate.com/github/haraka/haraka-plugin-attachment
+[cov-img]: https://codecov.io/github/haraka/haraka-plugin-attachment/coverage.svg
+[cov-url]: https://codecov.io/github/haraka/haraka-plugin-attachment
+[qlty-img]: https://qlty.sh/gh/haraka/projects/haraka-plugin-attachment/maintainability.svg
+[qlty-url]: https://qlty.sh/gh/haraka/projects/haraka-plugin-attachment

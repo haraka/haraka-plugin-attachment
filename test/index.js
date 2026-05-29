@@ -5,19 +5,18 @@ const fs = require('fs')
 const path = require('path')
 const { describe, it, beforeEach } = require('node:test')
 
-const fixtures = require('haraka-test-fixtures')
+const { makePlugin, makeConnection } = require('haraka-test-fixtures')
 
-const attach = new fixtures.plugin('index')
+const attach = makePlugin('index')
 
 let plugin, connection, directory
 
 const _set_up = (t, done) => {
-  plugin = new fixtures.plugin('attachment')
+  plugin = makePlugin('attachment', { register: false })
   plugin.cfg = {}
   plugin.cfg.timeout = 10
 
-  connection = fixtures.connection.createConnection()
-  connection.init_transaction()
+  connection = makeConnection({ withTxn: true })
 
   connection.logdebug = function (where, message) {
     if (process.env.DEBUG) console.log(message)
@@ -82,8 +81,7 @@ describe('disallowed_extensions', () => {
     attach.cfg = { main: { disallowed_extensions: 'exe;scr' } }
     attach.load_disallowed_extns()
 
-    const connection = fixtures.connection.createConnection()
-    connection.init_transaction()
+    const connection = makeConnection({ withTxn: true })
     const txn = connection.transaction
 
     txn.notes.attachment_files = ['naughty.exe']
@@ -97,8 +95,7 @@ describe('disallowed_extensions', () => {
     attach.cfg = { main: { disallowed_extensions: 'dll tnef' } }
     attach.load_disallowed_extns()
 
-    const connection = fixtures.connection.createConnection()
-    connection.init_transaction()
+    const connection = makeConnection({ withTxn: true })
     const txn = connection.transaction
     txn.notes.attachment = {}
 
@@ -152,19 +149,19 @@ describe('isArchive', () => {
   })
 
   it('returns false for undefined archive config', () => {
-    const plugin = new fixtures.plugin('attachment')
+    const plugin = makePlugin('attachment', { register: false })
     plugin.cfg = { archive: { exts: {} } }
     assert.equal(plugin.isArchive('foo'), false)
   })
 
   it('returns true for extension in exts', () => {
-    const plugin = new fixtures.plugin('attachment')
+    const plugin = makePlugin('attachment', { register: false })
     plugin.cfg = { archive: { exts: { zip: true } } }
     assert.equal(plugin.isArchive('zip'), true)
   })
 
   it('returns true for .ext in exts', () => {
-    const plugin = new fixtures.plugin('attachment')
+    const plugin = makePlugin('attachment', { register: false })
     plugin.cfg = { archive: { exts: { zip: true } } }
     assert.equal(plugin.isArchive('.zip'), true)
   })
@@ -172,7 +169,7 @@ describe('isArchive', () => {
 
 describe('content_type', () => {
   it('returns unknown/unknown for invalid ctype', () => {
-    const plugin = new fixtures.plugin('attachment')
+    const plugin = makePlugin('attachment', { register: false })
     const connection = {
       transaction: { notes: { attachment_ctypes: [] } },
       logdebug: () => {},
@@ -312,9 +309,8 @@ describe('wait_for_attachment_hooks and start_attachment (md5 only)', () => {
   // beforeEach(_set_up)
 
   it('wait_for_attachment_hooks sets attachment_next when count > 0', (t, done) => {
-    const plugin = new fixtures.plugin('attachment')
-    const connection = fixtures.connection.createConnection()
-    connection.init_transaction()
+    const plugin = makePlugin('attachment', { register: false })
+    const connection = makeConnection({ withTxn: true })
     connection.transaction.notes.attachment_count = 1
 
     plugin.wait_for_attachment_hooks(function () {
@@ -330,9 +326,8 @@ describe('wait_for_attachment_hooks and start_attachment (md5 only)', () => {
   })
 
   it('start_attachment computes md5 and records attachment when no filename', (t, done) => {
-    const plugin = new fixtures.plugin('attachment')
-    const connection = fixtures.connection.createConnection()
-    connection.init_transaction()
+    const plugin = makePlugin('attachment', { register: false })
+    const connection = makeConnection({ withTxn: true })
     const txn = connection.transaction
     txn.notes.attachments = []
     txn.notes.attachment_ctypes = []
@@ -367,7 +362,7 @@ describe('check_attachments', () => {
   const constants = require('haraka-constants')
 
   const mkPlugin = (re = {}) => {
-    const p = new fixtures.plugin('attachment')
+    const p = makePlugin('attachment', { register: false })
     p.cfg = { main: {} }
     p.re = {
       ct: /^([^/]+\/[^;\r\n ]+)/,
@@ -379,19 +374,10 @@ describe('check_attachments', () => {
     return p
   }
 
-  const mkConn = (notes = {}) => {
-    const c = fixtures.connection.createConnection()
-    c.init_transaction()
-    Object.assign(c.transaction.notes, {
-      attachment_ctypes: [],
-      attachment_files: [],
-      attachment_archive_files: [],
-      ...notes,
+  const mkConn = (notes = {}) =>
+    makeConnection({
+      txNotes: { attachment_ctypes: [], attachment_files: [], attachment_archive_files: [], ...notes },
     })
-    c.logdebug = () => {}
-    c.loginfo = () => {}
-    return c
-  }
 
   const run = (p, c) => new Promise((res) => p.check_attachments((...a) => res(a), c))
 
@@ -480,15 +466,14 @@ describe('check_attachments', () => {
 
 describe('hook_data / content_type / start_attachment', () => {
   it('hook_data with no transaction calls next()', async () => {
-    const p = new fixtures.plugin('attachment')
+    const p = makePlugin('attachment', { register: false })
     const args = await new Promise((res) => p.hook_data((...a) => res(a), {}))
     assert.deepEqual(args, [])
   })
 
   it('hook_data initializes txn notes and registers the hook', async () => {
-    const p = new fixtures.plugin('attachment')
-    const c = fixtures.connection.createConnection()
-    c.init_transaction()
+    const p = makePlugin('attachment', { register: false })
+    const c = makeConnection({ withTxn: true })
     let hooked = false
     c.transaction.attachment_hooks = () => (hooked = true)
     await new Promise((res) => p.hook_data((...a) => res(a), c))
@@ -498,7 +483,7 @@ describe('hook_data / content_type / start_attachment', () => {
   })
 
   it('content_type records a recognized type', () => {
-    const p = new fixtures.plugin('attachment')
+    const p = makePlugin('attachment', { register: false })
     p.re = { ct: /^([^/]+\/[^;\r\n ]+)/ }
     const c = {
       transaction: { notes: { attachment_ctypes: [] } },
@@ -509,11 +494,10 @@ describe('hook_data / content_type / start_attachment', () => {
   })
 
   it('start_attachment records a non-archive filename', () => {
-    const p = new fixtures.plugin('attachment')
+    const p = makePlugin('attachment', { register: false })
     p.cfg = { main: {} }
     p.compute_and_log_md5sum = () => {}
-    const c = fixtures.connection.createConnection()
-    c.init_transaction()
+    const c = makeConnection({ withTxn: true })
     c.transaction.notes.attachment_files = []
     c.logdebug = () => {}
     p.start_attachment(c, 'text/plain', 'readme.txt', null, {})
@@ -571,7 +555,7 @@ describe('start_attachment archive extraction', () => {
 
 describe('config & init branches', () => {
   it('hook_init_master disables archives when bsdtar is absent', (t, done) => {
-    const p = new fixtures.plugin('attachment')
+    const p = makePlugin('attachment', { register: false })
     p.find_bsdtar_path = async () => {
       throw new Error('nope')
     }
@@ -582,7 +566,7 @@ describe('config & init branches', () => {
   })
 
   it('load_attachment_ini honors legacy archive_extensions config', () => {
-    const p = new fixtures.plugin('attachment')
+    const p = makePlugin('attachment', { register: false })
     p.config.get = () => ({
       main: { archive_extensions: 'zip rar', archive_max_depth: 9 },
       archive: {},
