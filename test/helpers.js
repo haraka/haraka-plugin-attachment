@@ -6,25 +6,20 @@ const os = require('os')
 const path = require('path')
 const { describe, it, beforeEach } = require('node:test')
 
-const fixtures = require('haraka-test-fixtures')
+const { makeConnection, makePlugin } = require('haraka-test-fixtures')
 
 describe('internal helper functions', () => {
-  let plugin
-  let connection
-
+  let plugin, connection
   beforeEach(() => {
-    plugin = new fixtures.plugin('attachment')
+    plugin = makePlugin('attachment', { register: false })
     // ensure tmp module is available for createTmp
     plugin.load_tmp_module()
 
-    plugin.cfg = {}
-    plugin.cfg.timeout = 100
-    plugin.cfg.archive = { exts: { zip: true }, max_depth: 5 }
+    plugin.cfg = { timeout: 100, archive: { exts: { zip: true }, max_depth: 5 } }
 
-    connection = fixtures.connection.createConnection()
-    connection.init_transaction()
-    connection.logdebug = function () {}
-    connection.loginfo = function () {}
+    connection = makeConnection({ withTxn: true })
+    connection.logdebug = () => {}
+    connection.loginfo = () => {}
   })
 
   it('createTmp creates a temp file and returns fd/name', async () => {
