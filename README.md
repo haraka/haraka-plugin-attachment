@@ -1,6 +1,6 @@
 # haraka-plugin-attachment
 
-[![Build][ci-img]][ci-url] [![Cover][cov-img]][cov-url] [![Qlty][qlty-img]][qlty-url]
+[![Test][ci-img]][ci-url] [![Cover][cov-img]][cov-url] [![Qlty][qlty-img]][qlty-url]
 
 This plugin allows you to reject messages based on Content-Type anywhere in the MIME tree (the body and every nested part are walked) or on the filename of any attachment, including filenames inside expanded archives.
 

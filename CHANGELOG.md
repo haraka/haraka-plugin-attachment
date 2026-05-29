@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Unreleased
 
 - test: refactored against test-utils 1.7.0
+- test: refactored against test-fixtures 1.7.0
 
 ### [1.2.1] - 2026-05-24
 
